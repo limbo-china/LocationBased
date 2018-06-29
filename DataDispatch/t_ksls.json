@@ -1,0 +1,56 @@
+{
+    "protocol": "t_ksls",
+    "types": [
+        {
+            "type": "record",
+            "name": "t_ksls",
+            "fields": [
+                {
+                    "name": "c_imsi",
+                    "type": "string"
+                },
+                {
+                    "name": "c_msisdn",
+                    "type": "string"
+                },
+                {
+                    "name": "c_imei",
+                    "type": "string"
+                },
+                {
+                    "name": "c_last_province",
+                    "type": "string"
+                },
+                {
+                    "name": "c_curr_province",
+                    "type": "string"
+                },
+                {
+                    "name": "c_time",
+                    "type": "long"
+                }
+            ]
+        },
+        {
+        "type": "record",
+        "name": "docs",
+        "fields": [
+        {
+            "name": "doc_schema_name",
+            "type": "string"
+        },
+        {
+            "name": "sign",
+            "type": "string"
+        },
+        {
+            "name": "doc_set",
+            "type": {
+                "type": "array",
+                "items": "bytes"
+            }
+        }
+        ]
+    }
+    ]
+}

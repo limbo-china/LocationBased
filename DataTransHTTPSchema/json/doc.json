@@ -1,0 +1,104 @@
+{
+    "protocol": "xl",
+    "types": [
+        {
+            "type": "record",
+            "name": "t_cdr",
+            "fields": [
+                {
+                    "name": "cdrType",
+                    "type": "int"
+                },
+                {
+                    "name": "beginTime",
+                    "type": "long"
+                },
+                {
+                    "name": "endTime",
+                    "type": "long"
+                },
+                {
+                    "name": "timeStamp",
+                    "type": "long"
+                },
+                {
+                    "name": "getMesgTime",
+                    "type": "long"
+                },
+                {
+                    "name": "userNum",
+                    "type": "string"
+                },
+                {
+                    "name": "relateNum",
+                    "type": "string"
+                },
+                {
+                    "name": "imsi",
+                    "type": "string"
+                },
+                {
+                    "name": "imei",
+                    "type": "string"
+                },
+                {
+                    "name": "spCode",
+                    "type": "int"
+                },
+                {
+                    "name": "asCode",
+                    "type": "int"
+                },
+                {
+                    "name": "lac",
+                    "type": "int"
+                },
+                {
+                    "name": "ci",
+                    "type": "int"
+                },
+                {
+                    "name": "rac",
+                    "type": "int"
+                },
+                {
+                    "name": "uli",
+                    "type": "string"
+                },
+                {
+                    "name": "areaCode",
+                    "type": "string"
+                },
+                {
+                    "name": "homeCode",
+                    "type": "string"
+                },
+                {
+                    "name": "content",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "type": "record",
+            "name": "docs",
+            "fields": [
+                {
+                    "name": "doc_schema_name",
+                    "type": "string"
+                },
+                {
+                    "name": "sign",
+                    "type": "string"
+                },
+                {
+                    "name": "doc_set",
+                    "type": {
+                        "type": "array",
+                        "items": "bytes"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,9 @@
+*.metadata*
+*.class
+*.jar
+*.settings*
+*RemoteSystemsTempFiles*
+*.recommenders*
+*DS_Store*
+*.idea*
+*.log*

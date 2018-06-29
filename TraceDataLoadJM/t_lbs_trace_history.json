@@ -1,0 +1,56 @@
+{
+    "protocol": "t_lbs_trace_history",
+    "types": [
+        {
+            "type": "record",
+            "name": "t_lbs_trace_history",
+            "fields": [
+                {
+                    "name": "c_imsi",
+                    "type": "string"
+                },
+                {
+                    "name": "c_imei",
+                    "type": "string"
+                },
+                {
+                    "name": "c_msisdn",
+                    "type": "string"
+                },
+                {
+                    "name": "c_uli",
+                    "type": "string"
+                },
+                {
+                    "name": "c_areacode",
+                    "type": "string"
+                },
+                {
+                    "name": "c_timestamp",
+                    "type": "long"
+                }
+            ]
+        },
+        {
+            "type": "record",
+            "name": "docs",
+            "fields": [
+                {
+                    "name": "doc_schema_name",
+                    "type": "string"
+                },
+                {
+                    "name": "sign",
+                    "type": "string"
+                },
+                {
+                    "name": "doc_set",
+                    "type": {
+                        "type": "array",
+                        "items": "bytes"
+                    }
+                }
+            ]
+        }
+    ]
+}

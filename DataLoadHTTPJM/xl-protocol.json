@@ -1,0 +1,76 @@
+{
+    "protocol": "xl",
+    "types": [
+        {
+            "type": "record",
+            "name": "xl",
+            "fields": [
+                {
+                    "name": "imsi",
+                    "type": "string"
+                },
+                {
+                    "name": "imei",
+                    "type": "string"
+                },
+                {
+                    "name": "msisdn",
+                    "type": "string"
+                },
+                {
+                    "name": "regioncode",
+                    "type": "string"
+                },
+                {
+                    "name": "lac",
+                    "type": "string"
+                },
+                {
+                    "name": "ci",
+                    "type": "string"
+                },
+                {
+                    "name": "uli",
+                    "type": "string"
+                },
+                {
+                    "name": "homecode",
+                    "type": "string"
+                },
+                {
+                    "name": "lngi",
+                    "type": "float"
+                },
+                {
+                    "name": "lati",
+                    "type": "float"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "long"
+                }
+            ]
+        },
+        {
+            "type": "record",
+            "name": "docs",
+            "fields": [
+                {
+                    "name": "doc_schema_name",
+                    "type": "string"
+                },
+                {
+                    "name": "sign",
+                    "type": "string"
+                },
+                {
+                    "name": "doc_set",
+                    "type": {
+                        "type": "array",
+                        "items": "bytes"
+                    }
+                }
+            ]
+        }
+    ]
+}

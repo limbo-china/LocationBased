@@ -13,7 +13,7 @@ public class RedisUtil {
     
     //private static String ADDR = "10.244.78.18";
     
-    private static int PORT = 6379;
+    private static int PORT;
     private static int MAX_ACTIVE = 4096;
     private static int MAX_IDLE = 4096;
     private static int MAX_WAIT = 1000;
@@ -29,7 +29,8 @@ public class RedisUtil {
             System.exit(-1);
         }
 
-        String ADDR = conf.getString("redisIP", "");
+        String ADDR = conf.getString("redisIP", "").split(":")[0];
+        PORT = Integer.valueOf(conf.getString("redisIP", "").split(":")[1]);
         if (ADDR.isEmpty()) {
             System.out.println("definition redisIP is not found in " + configurationFileName);
             System.exit(-1);

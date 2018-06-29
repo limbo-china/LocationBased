@@ -24,34 +24,10 @@ import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPool;
 
-/**
- * ━━━━━━神兽出没━━━━━━
- * 　　　┏┓　　　┏┓
- * 　　┏┛┻━━━┛┻┓
- * 　　┃　　　　　　　┃
- * 　　┃　　　━　　　┃
- * 　　┃　┳┛　┗┳　┃
- * 　　┃　　　　　　　┃
- * 　　┃　　　┻　　　┃
- * 　　┃　　　　　　　┃
- * 　　┗━┓　　　┏━┛
- * 　　　　┃　　　┃神兽保佑, 永无BUG!
- * 　　　　┃　　　┃Code is far away from bug with the animal protecting
- * 　　　　┃　　　┗━━━┓
- * 　　　　┃　　　　　　　┣┓
- * 　　　　┃　　　　　　　┏┛
- * 　　　　┗┓┓┏━┳┓┏┛
- * 　　　　　┃┫┫　┃┫┫
- * 　　　　　┗┻┛　┗┻┛
- * ━━━━━━感觉萌萌哒━━━━━━
- * @author zhangyu
- *
- */
+
 public class ProvinceQueryTask {
 
 	private static Configuration conf = null;
-	//private static Map<String, String>codeMap = new HashMap<String, String>();
-	//static String mapFile = "codeMap.txt";
 	static Logger logger = null;
 	// private static Cache<String, String> basicCache = null;
 
@@ -107,7 +83,7 @@ public class ProvinceQueryTask {
 	public ProvinceQueryTask() {
 	}
 /*
- * 宁夏 和国家中心一样入参和出参一样
+ * 瀹佸 鍜屽浗瀹朵腑蹇冧竴鏍峰叆鍙傚拰鍑哄弬涓�鏍�
  */
 	public String queryProvinceResult(String type, String index) {
 		ShardedJedis jedis = JedisUtilMap.getSource();

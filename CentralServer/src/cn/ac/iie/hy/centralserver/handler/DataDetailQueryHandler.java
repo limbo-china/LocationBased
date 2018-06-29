@@ -1,7 +1,6 @@
 package cn.ac.iie.hy.centralserver.handler;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.Date;
 import java.text.SimpleDateFormat;
@@ -18,10 +17,8 @@ import org.apache.log4j.PropertyConfigurator;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.scistor.softcrypto.SoftCrypto;
-
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.ShardedJedis;
 import cn.ac.iie.hy.centralserver.data.ProvinceDBMap;
 import cn.ac.iie.hy.centralserver.data.UserSubQueryBean;
 import cn.ac.iie.hy.centralserver.data.UserSubQueryEncryptBean;
@@ -30,31 +27,10 @@ import cn.ac.iie.hy.centralserver.dbutils.JedisUtilMap;
 import cn.ac.iie.hy.centralserver.dbutils.RedisUtil;
 import cn.ac.iie.hy.centralserver.dbutils.ShardedJedisUtil;
 import cn.ac.iie.hy.centralserver.dbutils.ShardedJedisUtilWithPara;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.ShardedJedis;
 
-/**
- * ━━━━━━神兽出没━━━━━━
- * 　　　┏┓　　　┏┓
- * 　　┏┛┻━━━┛┻┓
- * 　　┃　　　　　　　┃
- * 　　┃　　　━　　　┃
- * 　　┃　┳┛　┗┳　┃
- * 　　┃　　　　　　　┃
- * 　　┃　　　┻　　　┃
- * 　　┃　　　　　　　┃
- * 　　┗━┓　　　┏━┛
- * 　　　　┃　　　┃神兽保佑, 永无BUG!
- * 　　　　┃　　　┃Code is far away from bug with the animal protecting
- * 　　　　┃　　　┗━━━┓
- * 　　　　┃　　　　　　　┣┓
- * 　　　　┃　　　　　　　┏┛
- * 　　　　┗┓┓┏━┳┓┏┛
- * 　　　　　┃┫┫　┃┫┫
- * 　　　　　┗┻┛　┗┻┛
- * ━━━━━━感觉萌萌哒━━━━━━
- * @author zhangyu
- */
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.scistor.softcrypto.SoftCrypto;
 
 public class DataDetailQueryHandler extends AbstractHandler {
 
@@ -66,8 +42,10 @@ public class DataDetailQueryHandler extends AbstractHandler {
 	static {
 		try {
 			prop.load(new FileInputStream("data-pro.properties"));
-			jedisuli = new Jedis(prop.getProperty("uliRedisIp").split(":")[0],Integer.valueOf(prop.getProperty("uliRedisIp").split(":")[1]));
-		} catch (Exception e){
+			jedisuli = new Jedis(
+					prop.getProperty("uliRedisIp").split(":")[0],
+					Integer.valueOf(prop.getProperty("uliRedisIp").split(":")[1]));
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		PropertyConfigurator.configure("log4j.properties");
@@ -107,30 +85,33 @@ public class DataDetailQueryHandler extends AbstractHandler {
 	}
 
 	@Override
-	public void handle(String string, Request baseRequest, HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse) throws IOException, ServletException {
+	public void handle(String string, Request baseRequest,
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse) throws IOException,
+			ServletException {
 		String token = httpServletRequest.getParameter("token");
 		String queryType = httpServletRequest.getParameter("querytype");
 		String index = httpServletRequest.getParameter("index");
 		List<String> indexList = Arrays.asList(index.split(","));
-		
+
 		String remoteHost = baseRequest.getRemoteAddr();
 		int ret = 0;
-		int count =0;
+		int count = 0;
 		String result = null;
 		String imsi = null;
-		String responese = null;
-		logger.info(remoteHost + "request pro query token:" + token + " querytype:" + queryType + " index:" + index);
+		String responese = "";
+		logger.info(remoteHost + "request pro query token:" + token
+				+ " querytype:" + queryType + " index:" + index);
 
-		for(String aIndex : indexList){
+		for (String aIndex : indexList) {
 			count++;
-			logger.info("times: "+count);
+			logger.info("times: " + count);
 			do {
-				
+
 				Turple2 r = checkToken(token, queryType, aIndex);
 				ret = r.getRet();
 				boolean isEncrypt = false;
-				if(token.equals("123456")){
+				if (token.equals("123456")) {
 					ret = 0;
 					r = new Turple2(0, aIndex);
 				}
@@ -142,7 +123,7 @@ public class DataDetailQueryHandler extends AbstractHandler {
 					break;
 				}
 				String out = r.getOut();
-				//logger.info(out + "len:"+out.length());
+				// logger.info(out + "len:"+out.length());
 				if (queryType.equals("msisdn")) {
 					imsi = queryImsi(out);
 					logger.info(imsi);
@@ -153,24 +134,24 @@ public class DataDetailQueryHandler extends AbstractHandler {
 					ret = 6;
 					break;
 				}
-	
+
 				String provinceCode = queryProvinceCode(imsi);
-				//logger.info("prov: "+provinceCode);
+				// logger.info("prov: "+provinceCode);
 				if (provinceCode == null) {
 					ret = 7;
 					break;
 				}
-	
+
 				String ipList = ProvinceDBMap.getProDBIP(provinceCode);
-				//logger.info("ipList: "+ipList);
+				// logger.info("ipList: "+ipList);
 				if (isEncrypt) {
 					result = queryEncryptDetail(ipList, imsi, aIndex);
 				} else {
 					result = queryDetail(ipList, imsi, provinceCode);
 				}
-	
+
 			} while (false);
-	
+
 			if (ret != 0) {
 				JsonObject element = new JsonObject();
 				element.addProperty("status", ret);
@@ -185,7 +166,8 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		baseRequest.setHandled(true);
 		httpServletResponse.getWriter().println(responese);
 	}
-//现在用
+
+	// 鐜板湪鐢�
 	private Turple2 checkToken(String token, String queryType, String index) {
 		if (token == null || token.isEmpty()) {
 			return new Turple2(2, null);
@@ -217,13 +199,13 @@ public class DataDetailQueryHandler extends AbstractHandler {
 	private String queryGPSFromDB(String uli) {
 		return new GPSDataFromOscar(uli).getGPS();
 	}
-	
-	private String queryGPSFromRedis(String uli){	
-		 return jedisuli.get(uli);
+
+	private String queryGPSFromRedis(String uli) {
+		return jedisuli.get(uli);
 	}
 
 	private String queryEncryptDetail(String ip, String imsi, String index) {
-		if(ip.startsWith("10.224")){
+		if (ip.startsWith("10.224")) {
 			for (int port = 6379; port < 6382; port++) {
 				Jedis jedis = new Jedis("10.224.82.1", port);
 				String v = jedis.get(imsi);
@@ -280,7 +262,7 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			}
 		}
 		int portUpper = 6383;
-		if(ip.startsWith("10.231")){
+		if (ip.startsWith("10.231")) {
 			portUpper = 6384;
 		}
 		for (int port = 6379; port < portUpper; port++) {
@@ -313,42 +295,44 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		return null;
 	}
 
-	private String queryDetail(String ipList, String imsi, String defaultRegionCode) {
-		
-		if(ipList.startsWith("10.241"))
+	private String queryDetail(String ipList, String imsi,
+			String defaultRegionCode) {
+
+		if (ipList.startsWith("10.241"))
 			return "241";
-		if(ipList.startsWith("10.245")){
+		if (ipList.startsWith("10.245")) {
 			String imsitmp = imsi;
-			if(imsi!=null && imsi.length()==15)
-			{
+			if (imsi != null && imsi.length() == 15) {
 				SoftCrypto crypt = new SoftCrypto();
 				crypt.Initialize("abc");
 				byte[] datain = imsi.substring(3, 15).getBytes();
-				byte[] dataout = new byte[datain.length];			
-				int res = crypt.crypto_encrypt(datain, dataout, datain.length, 1, 0);
+				byte[] dataout = new byte[datain.length];
+				int res = crypt.crypto_encrypt(datain, dataout, datain.length,
+						1, 0);
 				String t = new String(dataout);
-				//logger.info("res: "+res);
-				imsi = imsi.substring(0,3)+t;
+				// logger.info("res: "+res);
+				imsi = imsi.substring(0, 3) + t;
 			}
-			//logger.info("imsi: "+imsi);		
+			// logger.info("imsi: "+imsi);
 		}
-		ShardedJedisUtilWithPara redisList = new ShardedJedisUtilWithPara(ipList);
+		ShardedJedisUtilWithPara redisList = new ShardedJedisUtilWithPara(
+				ipList);
 		ShardedJedis jedisCluster = redisList.getSource();
 		String v = jedisCluster.get(imsi);
 		redisList.returnResource(jedisCluster);
-		//logger.info("v: "+v);	
-		
+		// logger.info("v: "+v);
+
 		if (v != null) {
 			UserSubQueryBean usqb = new UserSubQueryBean();
 			usqb.setStatus(0);
 			usqb.setImsi(v.split(";")[0]);
 			usqb.setImei(v.split(";")[1]);
 			usqb.setMsisdn(v.split(";")[2]);
-			if(v.split(";")[3].length()!=6){
-				usqb.setRegionCode(defaultRegionCode+"0000");
+			if (v.split(";")[3].length() != 6) {
+				usqb.setRegionCode(defaultRegionCode + "0000");
 
-			}else{
-					usqb.setRegionCode(v.split(";")[3]);
+			} else {
+				usqb.setRegionCode(v.split(";")[3]);
 
 			}
 			usqb.setLac(v.split(";")[4]);
@@ -358,14 +342,14 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			usqb.setTime(timeStamp2Date(v.split(";")[10], null));
 
 			String rawGPS = queryGPSFromRedis(v.split(";")[6]);
-			if(rawGPS !=null){
+			if (rawGPS != null) {
 				usqb.setLngi(Double.parseDouble(rawGPS.split(",")[1]));
 				usqb.setLati(Double.parseDouble(rawGPS.split(",")[2]));
 				usqb.setProvince(rawGPS.split(",")[3]);
 				usqb.setCity(rawGPS.split(",")[4]);
 				usqb.setDistrict(rawGPS.split(",")[5]);
 				usqb.setBaseinfo(rawGPS.split(",")[7]);
-			}else{
+			} else {
 				usqb.setLngi(0.0);
 				usqb.setLati(0.0);
 				usqb.setProvince("null");
@@ -420,21 +404,21 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		case 0:
 			return "Right";
 		case 1:
-			return "服务器错误";
+			return "鏈嶅姟鍣ㄩ敊璇�";
 		case 2:
-			return "请求参数非法";
+			return "璇锋眰鍙傛暟闈炴硶";
 		case 3:
-			return "权限校验失败";
+			return "鏉冮檺鏍￠獙澶辫触";
 		case 4:
-			return "配额不足";
+			return "閰嶉涓嶈冻";
 		case 5:
-			return "token 不存在或非法";
+			return "token 涓嶅瓨鍦ㄦ垨闈炴硶";
 		case 6:
-			return "手机号映射缺失";
+			return "鎵嬫満鍙锋槧灏勭己澶�";
 		case 7:
-			return "查询结果为空";
+			return "鏌ヨ缁撴灉涓虹┖";
 		default:
-			return "未知错误";
+			return "鏈煡閿欒";
 		}
 	}
 }

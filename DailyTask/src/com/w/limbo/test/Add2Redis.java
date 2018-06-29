@@ -1,4 +1,4 @@
-package com.lbs.rtp;
+package com.w.limbo.test;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Scanner;
@@ -9,20 +9,20 @@ import org.apache.log4j.PropertyConfigurator;
 
 import redis.clients.jedis.Jedis;
 
-public class AddMsisdn2TokenRedis {
+public class Add2Redis {
 
 	static Logger logger = null;
 
  	static {
  		PropertyConfigurator.configure("log4j.properties");
- 		logger = Logger.getLogger(AddMsisdn2TokenRedis.class.getName());
+ 		logger = Logger.getLogger(Add2Redis.class.getName());
  	}
  
 	
 	public static void main(String[] args) throws IOException {
 
-		Jedis jedis1 = RedisUtil.getJedis1();
-		String fileName = "msisdn.txt";
+		Jedis jedis = new Jedis("172.16.18.34",6392);
+		String fileName = "uliredis.txt";
 
 		FileInputStream inputStream = null;
 		Scanner sc = null;
@@ -32,9 +32,10 @@ public class AddMsisdn2TokenRedis {
 		
 			int count =0 ;
 			while(sc.hasNext()){
-		    	String msisdn = sc.nextLine().split(";")[0];
+				String line = sc.nextLine();
+		    	String uli = line.split(",")[0];
 		    	
-		    	jedis1.hset("msisdn" ,msisdn,msisdn);		    	
+		    	jedis.set(uli ,line);	    	
     			count ++;
 			}
 			logger.info("count:" +count);

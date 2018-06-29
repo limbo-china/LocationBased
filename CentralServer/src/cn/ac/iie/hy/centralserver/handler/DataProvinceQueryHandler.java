@@ -21,28 +21,6 @@ import cn.ac.iie.hy.centralserver.dbutils.RedisUtil;
 import cn.ac.iie.hy.centralserver.task.ProvinceQueryTask;
 import redis.clients.jedis.Jedis;
 
-/**
- * ━━━━━━神兽出没━━━━━━
- * 　　　┏┓　　　┏┓
- * 　　┏┛┻━━━┛┻┓
- * 　　┃　　　　　　　┃
- * 　　┃　　　━　　　┃
- * 　　┃　┳┛　┗┳　┃
- * 　　┃　　　　　　　┃
- * 　　┃　　　┻　　　┃
- * 　　┃　　　　　　　┃
- * 　　┗━┓　　　┏━┛
- * 　　　　┃　　　┃神兽保佑, 永无BUG!
- * 　　　　┃　　　┃Code is far away from bug with the animal protecting
- * 　　　　┃　　　┗━━━┓
- * 　　　　┃　　　　　　　┣┓
- * 　　　　┃　　　　　　　┏┛
- * 　　　　┗┓┓┏━┳┓┏┛
- * 　　　　　┃┫┫　┃┫┫
- * 　　　　　┗┻┛　┗┻┛
- * ━━━━━━感觉萌萌哒━━━━━━
- * @author zhangyu
- */
 public class DataProvinceQueryHandler extends AbstractHandler {
 
 	private static DataProvinceQueryHandler dataHandler = null;
@@ -113,7 +91,7 @@ public class DataProvinceQueryHandler extends AbstractHandler {
 		httpServletResponse.getWriter().println(result);
 
 	}
-//很少用到
+//寰堝皯鐢ㄥ埌
 	private int checkToken(String token) {
 		String key = "PRO_QUERY_" + token;
 		Jedis jedis = RedisUtil.getJedis();
@@ -135,19 +113,19 @@ public class DataProvinceQueryHandler extends AbstractHandler {
 		case 0:
 			return "Right";
 		case 1:
-			return "服务器错误";
+			return "鏈嶅姟鍣ㄩ敊璇�";
 		case 2:
-			return "请求参数非法";
+			return "璇锋眰鍙傛暟闈炴硶";
 		case 3:
-			return "权限校验失败";
+			return "鏉冮檺鏍￠獙澶辫触";
 		case 4:
-			return "配额不足";
+			return "閰嶉涓嶈冻";
 		case 5:
-			return "token 不存在或非法";
+			return "token 涓嶅瓨鍦ㄦ垨闈炴硶";
 		case 6:
-			return "查询结果为空";
+			return "鏌ヨ缁撴灉涓虹┖";
 		default:
-			return "未知错误";
+			return "鏈煡閿欒";
 		}
 	}
 

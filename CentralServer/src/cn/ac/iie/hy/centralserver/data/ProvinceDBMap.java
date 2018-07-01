@@ -29,5 +29,8 @@ public class ProvinceDBMap {
 
 		// for test !!!
 		return "172.16.18.34:6379 172.16.18.34:6380";
+
+		// for test 2 !!!
+		// return "140.143.63.132:6378 140.143.63.132:6380";
 	}
 }

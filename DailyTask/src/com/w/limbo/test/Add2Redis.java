@@ -21,7 +21,7 @@ public class Add2Redis {
 	
 	public static void main(String[] args) throws IOException {
 
-		Jedis jedis = new Jedis("140.143.63.132",6392);
+		Jedis jedis = new Jedis("172.16.18.34",6392);
 		String fileName = "uliredis.txt";
 
 		FileInputStream inputStream = null;

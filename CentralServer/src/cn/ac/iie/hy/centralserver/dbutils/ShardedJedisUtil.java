@@ -28,12 +28,13 @@ public class ShardedJedisUtil {
 
 		Properties pps = new Properties();
 		try {
-			InputStream in = new BufferedInputStream(new FileInputStream(confFilePath));
+			InputStream in = new BufferedInputStream(new FileInputStream(
+					confFilePath));
 			pps.load(in);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		String value = pps.getProperty(key);// ip:port
 		List<JedisShardInfo> infoList = new ArrayList<JedisShardInfo>();
 

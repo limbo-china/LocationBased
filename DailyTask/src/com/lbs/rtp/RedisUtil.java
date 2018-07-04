@@ -12,7 +12,7 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 public class RedisUtil {
     
-    private static String ADDR1 = "140.143.63.132";//token-msidn
+    private static String ADDR1 = "172.16.18.34";//token-msidn
     private static String ADDR2 = "10.224.78.7";
     private static int PORT = 6388;
     private static int MAX_ACTIVE = 4096;

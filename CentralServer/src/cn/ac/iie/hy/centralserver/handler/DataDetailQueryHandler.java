@@ -25,10 +25,9 @@ import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPipeline;
 import cn.ac.iie.hy.centralserver.data.ProvinceDBMap;
 import cn.ac.iie.hy.centralserver.data.UserSubQueryBean;
-import cn.ac.iie.hy.centralserver.data.UserSubQueryEncryptBean;
-import cn.ac.iie.hy.centralserver.dbutils.GPSDataFromOscar;
 import cn.ac.iie.hy.centralserver.dbutils.JedisUtilMap;
 import cn.ac.iie.hy.centralserver.dbutils.RedisUtil;
+import cn.ac.iie.hy.centralserver.dbutils.ShardedJedisUtil;
 import cn.ac.iie.hy.centralserver.dbutils.ShardedJedisUtilWithPara;
 
 import com.google.gson.Gson;
@@ -97,8 +96,10 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		List<String> indexList = Arrays.asList(index.split(","));
 		HashMap<String, HashMap<String, Integer>> imsiMap = new HashMap<String, HashMap<String, Integer>>();
 
+		logger.info(httpServletRequest.getRequestURL());
 		HashMap<String, String> imsi2msisdn = new HashMap<String, String>();
 		HashMap<String, Turple2> imsi2turple = new HashMap<String, Turple2>();
+		HashMap<String, String> provinceMap = new HashMap<String, String>();
 
 		String remoteHost = baseRequest.getRemoteAddr();
 		int ret = 0;
@@ -110,6 +111,7 @@ public class DataDetailQueryHandler extends AbstractHandler {
 
 		checkToken(token, queryType, indexList, imsi2turple);
 		getImsi(queryType, indexList, imsi2msisdn);
+		getProvince(indexList, imsi2turple, imsi2msisdn, provinceMap);
 
 		for (String aIndex : indexList) {
 			count++;
@@ -138,7 +140,7 @@ public class DataDetailQueryHandler extends AbstractHandler {
 				}
 			} while (false);
 
-			String provinceCode = queryProvinceCode(imsi);
+			String provinceCode = provinceMap.get(imsi);
 			// logger.info("prov: "+provinceCode);
 			if (provinceCode == null) {
 				ret = 7;
@@ -234,99 +236,30 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			map.put(indexList.get(count++), (String) rs);
 	}
 
-	private String queryGPSFromDB(String uli) {
-		return new GPSDataFromOscar(uli).getGPS();
-	}
+	private void getProvince(List<String> indexList,
+			HashMap<String, Turple2> imsi2turple,
+			HashMap<String, String> imsi2msisdn,
+			HashMap<String, String> provinceMap) {
+		ShardedJedis jedisCluster = ShardedJedisUtil.getSource();
+		ShardedJedisPipeline pipeline = jedisCluster.pipelined();
 
-	private String queryEncryptDetail(String ip, String imsi, String index) {
-		if (ip.startsWith("10.224")) {
-			for (int port = 6379; port < 6382; port++) {
-				Jedis jedis = new Jedis("10.224.82.1", port);
-				String v = jedis.get(imsi);
-				jedis.close();
-				if (v != null) {
-					UserSubQueryEncryptBean usqb = new UserSubQueryEncryptBean();
-					usqb.setStatus(0);
-					usqb.setIndex(index);
-					usqb.setRegionCode(v.split(";")[3]);
-					usqb.setLac(v.split(";")[4]);
-					usqb.setCi(v.split(";")[5]);
-					usqb.setUli(v.split(";")[6]);
-					usqb.setHomeCode(v.split(";")[7]);
-					usqb.setTime(timeStamp2Date(v.split(";")[10], null));
-
-					String rawGPS = queryGPSFromDB(v.split(";")[6]);
-					usqb.setLngi(Double.parseDouble(rawGPS.split(",")[0]));
-					usqb.setLati(Double.parseDouble(rawGPS.split(",")[1]));
-					usqb.setProvince(rawGPS.split(",")[2]);
-					usqb.setCity(rawGPS.split(",")[3]);
-					usqb.setDistrict(rawGPS.split(",")[4]);
-					usqb.setBaseinfo(rawGPS.split(",")[5]);
-					Gson gson = new Gson();
-					String jsonResult = gson.toJson(usqb);
-					return jsonResult;
-				}
-			}
-			for (int port = 6379; port < 6382; port++) {
-				Jedis jedis = new Jedis("10.224.82.2", port);
-				String v = jedis.get(imsi);
-				jedis.close();
-				if (v != null) {
-					UserSubQueryEncryptBean usqb = new UserSubQueryEncryptBean();
-					usqb.setStatus(0);
-					usqb.setIndex(index);
-					usqb.setRegionCode(v.split(";")[3]);
-					usqb.setLac(v.split(";")[4]);
-					usqb.setCi(v.split(";")[5]);
-					usqb.setUli(v.split(";")[6]);
-					usqb.setHomeCode(v.split(";")[7]);
-					usqb.setTime(timeStamp2Date(v.split(";")[10], null));
-
-					String rawGPS = queryGPSFromDB(v.split(";")[6]);
-					usqb.setLngi(Double.parseDouble(rawGPS.split(",")[0]));
-					usqb.setLati(Double.parseDouble(rawGPS.split(",")[1]));
-					usqb.setProvince(rawGPS.split(",")[2]);
-					usqb.setCity(rawGPS.split(",")[3]);
-					usqb.setDistrict(rawGPS.split(",")[4]);
-					usqb.setBaseinfo(rawGPS.split(",")[5]);
-					Gson gson = new Gson();
-					String jsonResult = gson.toJson(usqb);
-					return jsonResult;
-				}
-			}
+		for (String aIndex : indexList) {
+			String imsi = imsi2msisdn.get(imsi2turple.get(aIndex).getOut());
+			if (imsi != null)
+				pipeline.get(imsi);
 		}
-		int portUpper = 6383;
-		if (ip.startsWith("10.231")) {
-			portUpper = 6384;
-		}
-		for (int port = 6379; port < portUpper; port++) {
-			Jedis jedis = new Jedis(ip, port);
-			String v = jedis.get(imsi);
-			jedis.close();
-			if (v != null) {
-				UserSubQueryEncryptBean usqb = new UserSubQueryEncryptBean();
-				usqb.setStatus(0);
-				usqb.setIndex(index);
-				usqb.setRegionCode(v.split(";")[3]);
-				usqb.setLac(v.split(";")[4]);
-				usqb.setCi(v.split(";")[5]);
-				usqb.setUli(v.split(";")[6]);
-				usqb.setHomeCode(v.split(";")[7]);
-				usqb.setTime(timeStamp2Date(v.split(";")[10], null));
+		List<Object> resp = pipeline.syncAndReturnAll();
+		ShardedJedisUtil.returnResource(jedisCluster);
 
-				String rawGPS = queryGPSFromDB(v.split(";")[6]);
-				usqb.setLngi(Double.parseDouble(rawGPS.split(",")[0]));
-				usqb.setLati(Double.parseDouble(rawGPS.split(",")[1]));
-				usqb.setProvince(rawGPS.split(",")[2]);
-				usqb.setCity(rawGPS.split(",")[3]);
-				usqb.setDistrict(rawGPS.split(",")[4]);
-				usqb.setBaseinfo(rawGPS.split(",")[5]);
-				Gson gson = new Gson();
-				String jsonResult = gson.toJson(usqb);
-				return jsonResult;
-			}
+		int count = 0;
+		for (Object rs : resp) {
+			String imsi = imsi2msisdn.get(imsi2turple.get(
+					indexList.get(count++)).getOut());
+			if (imsi != null)
+				provinceMap.put(imsi,
+						((String) rs).split(",")[3].substring(0, 2));
 		}
-		return null;
+
 	}
 
 	private String queryDetail(String ipList, HashMap<String, Integer> map) {
@@ -428,27 +361,6 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			format = "yyyy-MM-dd HH:mm:ss";
 		SimpleDateFormat sdf = new SimpleDateFormat(format);
 		return sdf.format(new Date(Long.valueOf(seconds + "000")));
-	}
-
-	private String queryProvinceCode(String index) {
-
-		// for test
-		return "11";
-
-		// ShardedJedis jedisCluster = ShardedJedisUtil.getSource();
-		// String value = null;
-		//
-		// value = jedisCluster.get(index);
-		//
-		// ShardedJedisUtil.returnResource(jedisCluster);
-		//
-		// if (value != null) {
-		//
-		// return value.split(",")[3].substring(0, 2);
-		//
-		// } else {
-		// return null;
-		// }
 	}
 
 	private String getReason(int ret) {

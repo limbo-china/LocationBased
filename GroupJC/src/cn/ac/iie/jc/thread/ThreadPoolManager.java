@@ -1,4 +1,4 @@
-package cn.ac.iie.hy.centralserver.task;
+package cn.ac.iie.jc.thread;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -10,9 +10,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-/**
- * 绾跨▼姹犵鐞�(绾跨▼缁熶竴璋冨害绠＄悊)
- */
 public final class ThreadPoolManager {
 
 	private static ThreadPoolManager sThreadPoolManager = new ThreadPoolManager();
@@ -27,7 +24,7 @@ public final class ThreadPoolManager {
 
 	private static final int PERIOD_TASK_QOS = 1000;
 
-	public static ThreadPoolManager newInstance() {
+	public static ThreadPoolManager getInstance() {
 		return sThreadPoolManager;
 	}
 

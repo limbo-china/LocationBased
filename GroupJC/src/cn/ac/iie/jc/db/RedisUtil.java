@@ -12,7 +12,6 @@ import cn.ac.iie.jc.config.ConfigUtil;
 
 public class RedisUtil {
 
-	private String parameter;
 	private static JedisPoolConfig poolConfig = new JedisPoolConfig();
 	private static HashMap<String, ShardedJedisPool> jedisPoolMap = null;
 	static {
@@ -20,8 +19,7 @@ public class RedisUtil {
 		configPool();
 	}
 
-	public RedisUtil(String para) {
-		this.parameter = para;
+	private RedisUtil() {
 	}
 
 	private static void configPool() {
@@ -32,22 +30,21 @@ public class RedisUtil {
 		poolConfig.setTestOnReturn(false);
 	}
 
-	public ShardedJedis getJedis() {
+	public synchronized static ShardedJedis getJedis(String para) {
 
-		if (jedisPoolMap.get(parameter) == null) {
-			List<JedisShardInfo> infoList = getInfoList();
+		if (jedisPoolMap.get(para) == null) {
+			List<JedisShardInfo> infoList = getInfoList(para);
 			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig,
 					infoList);
-			jedisPoolMap.put(parameter, jedisPool);
+			jedisPoolMap.put(para, jedisPool);
 		}
-
-		return getResource();
+		return getResource(para);
 	}
 
-	private List<JedisShardInfo> getInfoList() {
+	private static List<JedisShardInfo> getInfoList(String para) {
 		List<JedisShardInfo> infoList = new ArrayList<JedisShardInfo>();
 
-		String[] hosts = ConfigUtil.getString(parameter).split(" ");
+		String[] hosts = ConfigUtil.getString(para).split(" ");
 		for (String hostPair : hosts) {
 			String ip = hostPair.split(":")[0];
 			int port = Integer.parseInt(hostPair.split(":")[1]);
@@ -56,22 +53,22 @@ public class RedisUtil {
 		return infoList;
 	}
 
-	private synchronized ShardedJedis getResource() {
-		ShardedJedisPool jedisPool = jedisPoolMap.get(parameter);
+	private static ShardedJedis getResource(String para) {
+		ShardedJedisPool jedisPool = jedisPoolMap.get(para);
 		if (jedisPool != null)
 			return jedisPool.getResource();
 		else
 			return null;
 	}
 
-	public void returnBrokenJedis(ShardedJedis jedis) {
-		ShardedJedisPool jedisPool = jedisPoolMap.get(parameter);
+	public static void returnBrokenJedis(ShardedJedis jedis, String para) {
+		ShardedJedisPool jedisPool = jedisPoolMap.get(para);
 		if (jedis != null && jedisPool != null)
 			jedisPool.returnBrokenResource(jedis);
 	}
 
-	public void returnJedis(ShardedJedis jedis) {
-		ShardedJedisPool jedisPool = jedisPoolMap.get(parameter);
+	public static void returnJedis(ShardedJedis jedis, String para) {
+		ShardedJedisPool jedisPool = jedisPoolMap.get(para);
 		if (jedis != null && jedisPool != null)
 			jedisPool.returnResource(jedis);
 	}

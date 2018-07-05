@@ -107,7 +107,7 @@ public class Group {
 				+ ", updateTime=" + updateTime + "]";
 	}
 
-	public static Group getFromJson(String json) {
+	public static Group newFromJson(String json) {
 		Gson gson = new Gson();
 		return gson.fromJson(json, Group.class);
 	}

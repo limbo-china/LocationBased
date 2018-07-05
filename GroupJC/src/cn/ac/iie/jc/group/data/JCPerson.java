@@ -79,7 +79,7 @@ public class JCPerson {
 				+ ", updateTime=" + updateTime + "]";
 	}
 
-	public static JCPerson getFromJson(String json) {
+	public static JCPerson newFromJson(String json) {
 		Gson gson = new Gson();
 		return gson.fromJson(json, JCPerson.class);
 	}

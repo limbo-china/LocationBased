@@ -1,68 +1,76 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package cn.ac.iie.hy.centralserver.dbutils;
 
-import cn.ac.iie.hy.centralserver.config.Configuration;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.JedisShardInfo;
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPool;
+import cn.ac.iie.hy.centralserver.config.ConfigUtil;
+
 public class RedisUtil {
-    
-    //private static String ADDR = "10.244.78.18";
-    
-    private static int PORT = 6379;
-    private static int MAX_ACTIVE = 4096;
-    private static int MAX_IDLE = 4096;
-    private static int MAX_WAIT = 1000;
-    private static int TIMEOUT = 100000;
-    private static boolean TEST_ON_BORROW = true;
-    private static JedisPool jedisPool = null;
-  
-    static{
-        String configurationFileName = "data-pro.properties";
-        Configuration conf = Configuration.getConfiguration(configurationFileName);
-        if (conf == null) {
-            System.out.println("reading " + configurationFileName + " is failed.");
-            System.exit(-1);
-        }
 
-        String ADDR = conf.getString("redisIP", "");
-        if (ADDR.isEmpty()) {
-            System.out.println("definition redisIP is not found in " + configurationFileName);
-            System.exit(-1);
-        }
+	private static JedisPoolConfig poolConfig = new JedisPoolConfig();
+	private static HashMap<String, ShardedJedisPool> jedisPoolMap = null;
+	static {
+		jedisPoolMap = new HashMap<String, ShardedJedisPool>();
+		configPool();
+	}
 
-        JedisPoolConfig config = new JedisPoolConfig();
-        config.setMaxIdle(MAX_IDLE);
-        config.setTestOnBorrow(TEST_ON_BORROW);
-        jedisPool = new JedisPool(config,ADDR,PORT,TIMEOUT);
-    }
-    
-    
-   
-    public synchronized static Jedis getJedis(){
-       if(jedisPool!=null){
-           Jedis resource = jedisPool.getResource();
-           return resource;
-       }else{
-           return null;
-       }
-    }
-   
-    public static void returnBrokenResource(Jedis jedis){
-        if(jedis!=null){
-            jedisPool.returnBrokenResource(jedis);
-            
-        }
-    }
-    
-    public static void returnResource(Jedis jedis){
-    	if(jedis!=null){
-    		jedisPool.returnResource(jedis);
-    	}
-    }
-    
+	private RedisUtil() {
+	}
+
+	private static void configPool() {
+		poolConfig.setMaxTotal(2048);
+		poolConfig.setMaxIdle(4096);
+		poolConfig.setMaxWaitMillis(20000);
+		poolConfig.setTestOnBorrow(false);
+		poolConfig.setTestOnReturn(false);
+	}
+
+	public synchronized static ShardedJedis getJedis(String para) {
+
+		if (jedisPoolMap.get(para) == null) {
+			List<JedisShardInfo> infoList = getInfoList(para);
+			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig,
+					infoList);
+			jedisPoolMap.put(para, jedisPool);
+		}
+		return getResource(para);
+	}
+
+	private static List<JedisShardInfo> getInfoList(String para) {
+		List<JedisShardInfo> infoList = new ArrayList<JedisShardInfo>();
+
+		String[] hosts = ConfigUtil.getString(para).split(" ");
+		for (String hostPair : hosts) {
+			String ip = hostPair.split(":")[0];
+			int port = Integer.parseInt(hostPair.split(":")[1]);
+			infoList.add(new JedisShardInfo(ip, port));
+		}
+		return infoList;
+	}
+
+	private static ShardedJedis getResource(String para) {
+		ShardedJedisPool jedisPool = jedisPoolMap.get(para);
+		if (jedisPool != null)
+			return jedisPool.getResource();
+		else
+			return null;
+	}
+
+	public static void returnBrokenJedis(ShardedJedis jedis, String para) {
+		ShardedJedisPool jedisPool = jedisPoolMap.get(para);
+		if (jedis != null && jedisPool != null)
+			jedisPool.returnBrokenResource(jedis);
+	}
+
+	public static void returnJedis(ShardedJedis jedis, String para) {
+		ShardedJedisPool jedisPool = jedisPoolMap.get(para);
+		if (jedis != null && jedisPool != null)
+			jedisPool.returnResource(jedis);
+	}
+
 }

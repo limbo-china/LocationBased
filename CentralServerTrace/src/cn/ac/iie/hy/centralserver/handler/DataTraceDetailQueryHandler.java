@@ -16,75 +16,65 @@ import org.apache.log4j.PropertyConfigurator;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
+import cn.ac.iie.hy.centralserver.data.TraceDBData;
+import cn.ac.iie.hy.centralserver.data.TracePersonResult;
+import cn.ac.iie.hy.centralserver.data.TracePosition;
+import cn.ac.iie.hy.centralserver.server.XClusterDataFetch;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
-import cn.ac.iie.hy.centralserver.data.TraceQueryData;
-import cn.ac.iie.hy.centralserver.data.TraceQueryLBS;
-import cn.ac.iie.hy.centralserver.data.TraceQueryResult;
-import cn.ac.iie.hy.centralserver.dbutils.JedisUtilMap;
-import cn.ac.iie.hy.centralserver.dbutils.RedisUtil;
-import cn.ac.iie.hy.centralserver.server.XClusterDataFetch;
-import redis.clients.jedis.Jedis;
-
-public class DataTraceDetailQueryHandler extends AbstractHandler{
+public class DataTraceDetailQueryHandler extends AbstractHandler {
 
 	private static DataTraceDetailQueryHandler dataTraceDetailQueryHandler = null;
 	private static Logger logger = null;
-	
+
 	static {
 		PropertyConfigurator.configure("log4j.properties");
 		logger = Logger.getLogger(DataTraceQueryHandler.class.getName());
 	}
-	
-	private DataTraceDetailQueryHandler(){}
-	
-	public static DataTraceDetailQueryHandler getHandler(){
-		if(dataTraceDetailQueryHandler != null)
+
+	private DataTraceDetailQueryHandler() {
+	}
+
+	public static DataTraceDetailQueryHandler getHandler() {
+		if (dataTraceDetailQueryHandler != null)
 			return dataTraceDetailQueryHandler;
 		dataTraceDetailQueryHandler = new DataTraceDetailQueryHandler();
 		return dataTraceDetailQueryHandler;
 	}
-	
+
 	@Override
-	public void handle(String string, Request baseRequest, HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse) throws IOException, ServletException {
+	public void handle(String string, Request baseRequest,
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse) throws IOException,
+			ServletException {
 		// TODO Auto-generated method stub
 		String token = httpServletRequest.getParameter("token");
 		String queryType = httpServletRequest.getParameter("querytype");
 		String index = httpServletRequest.getParameter("index");
 		String starttime = httpServletRequest.getParameter("starttime");
 		String endtime = httpServletRequest.getParameter("endtime");
-		
+
 		String remoteHost = baseRequest.getRemoteAddr();
 		int remotePort = baseRequest.getRemotePort();
 		String reqID = String.valueOf(System.nanoTime());
-        String jobID = reqID;
+		String jobID = reqID;
 
 		int ret = 0;
 		String result = null;
 		String imsi = index;
-		
-        logger.info(remoteHost + "\trequest trace query token:" + token + "\tquerytype:" + queryType + "\tindex:" + index);
+
+		logger.info(remoteHost + "\trequest trace query token:" + token
+				+ "\tquerytype:" + queryType + "\tindex:" + index);
 
 		do {
 			/*
-			Turple2 r = checkToken(token, queryType, index);
-			ret = r.getRet();
-			if (ret != 0) {
-				break;
-			}
-			String out = r.getOut();
-			if (queryType.equals("msisdn")) {
-				imsi = queryImsi(out);
-			} else {
-				imsi = out;
-			}
-			if (imsi == null) {
-				ret = 6;
-				break;
-			}
-			*/
+			 * Turple2 r = checkToken(token, queryType, index); ret =
+			 * r.getRet(); if (ret != 0) { break; } String out = r.getOut(); if
+			 * (queryType.equals("msisdn")) { imsi = queryImsi(out); } else {
+			 * imsi = out; } if (imsi == null) { ret = 6; break; }
+			 */
 			HashMap<String, String> addrMap = new HashMap<String, String>();
 			addrMap.put("11", "10.244.69.247");
 			addrMap.put("12", "10.238.69.247");
@@ -117,27 +107,30 @@ public class DataTraceDetailQueryHandler extends AbstractHandler{
 			addrMap.put("63", "10.234.69.247");
 			addrMap.put("64", "10.229.69.247");
 			addrMap.put("65", "10.239.69.247");
-			
-			ArrayList<TraceQueryLBS> queryTraceList = queryTraceList(queryType, index, starttime, endtime);
-			if(queryTraceList == null || queryTraceList.size() == 0){
+
+			ArrayList<TraceDBData> queryTraceList = queryTraceList(queryType,
+					index, starttime, endtime);
+			if (queryTraceList == null || queryTraceList.size() == 0) {
 				ret = 7;
 				break;
 			}
 			HashSet<String> areaSet = new HashSet<String>();
-			for(TraceQueryLBS metaData : queryTraceList){
-				if(metaData.getC_areacode() != null && metaData.getC_areacode().length() == 6){
+			for (TraceDBData metaData : queryTraceList) {
+				if (metaData.getC_areacode() != null
+						&& metaData.getC_areacode().length() == 6) {
 					areaSet.add(metaData.getC_areacode().substring(0, 2));
 				}
 			}
-			ArrayList<TraceQueryLBS> traceDetailList = new ArrayList<TraceQueryLBS>();
-			for(String areacode : areaSet){
-				if(addrMap.containsKey(areacode)){
+			ArrayList<TraceDBData> traceDetailList = new ArrayList<TraceDBData>();
+			for (String areacode : areaSet) {
+				if (addrMap.containsKey(areacode)) {
 					String addr = addrMap.get(areacode);
-					ArrayList<TraceQueryLBS> traceDetail = queryTraceDetailList(addr, queryType, index, starttime, endtime);
+					ArrayList<TraceDBData> traceDetail = queryTraceDetailList(
+							addr, queryType, index, starttime, endtime);
 					traceDetailList.addAll(traceDetail);
 				}
 			}
-			if(traceDetailList == null || traceDetailList.size() == 0){
+			if (traceDetailList == null || traceDetailList.size() == 0) {
 				ret = 7;
 				break;
 			}
@@ -149,8 +142,8 @@ public class DataTraceDetailQueryHandler extends AbstractHandler{
 			JsonObject element = new JsonObject();
 			element.addProperty("status", ret);
 			element.addProperty("reason", getReason(ret));
-	        element.addProperty("jobid", jobID);
-	        
+			element.addProperty("jobid", jobID);
+
 			result = element.toString();
 		}
 
@@ -159,62 +152,79 @@ public class DataTraceDetailQueryHandler extends AbstractHandler{
 		baseRequest.setHandled(true);
 		httpServletResponse.getWriter().println(result);
 	}
-	private ArrayList<TraceQueryLBS> queryTraceDetailList(String addr, String queryType,String index, String starttime, String endtime){
-		ArrayList<TraceQueryLBS> result = new ArrayList<TraceQueryLBS>();
+
+	private ArrayList<TraceDBData> queryTraceDetailList(String addr,
+			String queryType, String index, String starttime, String endtime) {
+		ArrayList<TraceDBData> result = new ArrayList<TraceDBData>();
 		try {
 			try {
 				Class.forName("com.oscar.cluster.BulkDriver");
 			} catch (java.lang.ClassNotFoundException e) {
 				e.printStackTrace();
 			}
-			result = new XClusterDataFetch(addr).getTraceData(queryType, index, starttime, endtime);;
+			result = new XClusterDataFetch(addr).getTraceData(queryType, index,
+					starttime, endtime);
+			;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return result;
 	}
-	private ArrayList<TraceQueryLBS> queryTraceList(String queryType,String index, String starttime, String endtime){
-		ArrayList<TraceQueryLBS> result = new ArrayList<TraceQueryLBS>();
+
+	private ArrayList<TraceDBData> queryTraceList(String queryType,
+			String index, String starttime, String endtime) {
+		ArrayList<TraceDBData> result = new ArrayList<TraceDBData>();
 		try {
 			try {
 				Class.forName("com.oscar.cluster.BulkDriver");
 			} catch (java.lang.ClassNotFoundException e) {
 				e.printStackTrace();
 			}
-			result = new XClusterDataFetch().getTraceData(queryType, index, starttime, endtime);;
+			result = new XClusterDataFetch().getTraceData(queryType, index,
+					starttime, endtime);
+			;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return result;
 	}
-	private String traceList2Json(int status, ArrayList<TraceQueryLBS> queryTraceList){
-		if(status != 0){
+
+	private String traceList2Json(int status,
+			ArrayList<TraceDBData> queryTraceList) {
+		if (status != 0) {
 			return null;
 		}
-		TraceQueryResult traceResult = new TraceQueryResult();
-		ArrayList<TraceQueryData> traceDataList = new ArrayList<TraceQueryData>();
-		for(TraceQueryLBS data : queryTraceList){
-			if(traceResult.getImsi() == null || traceResult.getImsi().equals("") || traceResult.getImsi().equals("0")){
-				traceResult.setImsi(data.getC_imsi());
-			}
-			if(traceResult.getImei() == null || traceResult.getImei().equals("") || traceResult.getImei().equals("0")){
-				traceResult.setImei(data.getC_imei());
-			}
-			if(traceResult.getMsisdn() == null || traceResult.getMsisdn().equals("") || traceResult.getMsisdn().equals("0")){
-				traceResult.setMsisdn(data.getC_msisdn());
-			}
-			TraceQueryData traceData = new TraceQueryData();
+		TracePersonResult traceResult = new TracePersonResult();
+		ArrayList<TracePosition> traceDataList = new ArrayList<TracePosition>();
+		for (TraceDBData data : queryTraceList) {
+			// if (traceResult.getImsi() == null
+			// || traceResult.getImsi().equals("")
+			// || traceResult.getImsi().equals("0")) {
+			// traceResult.setImsi(data.getC_imsi());
+			// }
+			// if (traceResult.getImei() == null
+			// || traceResult.getImei().equals("")
+			// || traceResult.getImei().equals("0")) {
+			// traceResult.setImei(data.getC_imei());
+			// }
+			// if (traceResult.getMsisdn() == null
+			// || traceResult.getMsisdn().equals("")
+			// || traceResult.getMsisdn().equals("0")) {
+			// traceResult.setMsisdn(data.getC_msisdn());
+			// }
+			TracePosition traceData = new TracePosition();
 			traceData.setUli(data.getC_uli());
-			traceData.setTime(data.getC_timestamp());
+			// traceData.setTime(data.getC_timestamp());
 			traceDataList.add(traceData);
 		}
 		Gson gson = new Gson();
-		traceResult.setTracelist(gson.toJson(traceDataList));
+		traceResult.setTracelist(traceDataList);
 		traceResult.setStatus(status);
-		
+
 		return gson.toJson(traceResult);
-		
+
 	}
+
 	private class Turple2 {
 		private final int ret;
 		private final String out;
@@ -234,40 +244,35 @@ public class DataTraceDetailQueryHandler extends AbstractHandler{
 		}
 
 	}
-	private Turple2 checkToken(String token, String queryType, String index) {
-		if (token == null || token.isEmpty()) {
-			return new Turple2(2, null);
-		}
-		if (queryType == null || queryType.isEmpty()) {
-			return new Turple2(2, null);
-		}
-		if (index == null || index.isEmpty()) {
-			return new Turple2(2, null);
-		}
-		Jedis confJedis = RedisUtil.getJedis();
-		if (!confJedis.exists(token)) {
-			RedisUtil.returnResource(confJedis);
-			return new Turple2(5, null);
-		}
-		String out = confJedis.hget(token, index);
-		if (out == null) {
-			RedisUtil.returnResource(confJedis);
-			return new Turple2(3, null);
-		}
-		if (!out.equals(index)) {
-			RedisUtil.returnResource(confJedis);
-			return new Turple2(1, out);
-		}
-		RedisUtil.returnResource(confJedis);
-		return new Turple2(0, out);
-	}
 
-	private String queryImsi(String msisdn) {
-		Jedis jedis = JedisUtilMap.getJedis();
-		String imsi = jedis.get(msisdn);
-		JedisUtilMap.returnResource(jedis);
-		return imsi;
-	}
+	// private Turple2 checkToken(String token, String queryType, String index)
+	// {
+	// if (token == null || token.isEmpty()) {
+	// return new Turple2(2, null);
+	// }
+	// if (queryType == null || queryType.isEmpty()) {
+	// return new Turple2(2, null);
+	// }
+	// if (index == null || index.isEmpty()) {
+	// return new Turple2(2, null);
+	// }
+	// Jedis confJedis = RedisUtil.getJedis();
+	// if (!confJedis.exists(token)) {
+	// RedisUtil.returnResource(confJedis);
+	// return new Turple2(5, null);
+	// }
+	// String out = confJedis.hget(token, index);
+	// if (out == null) {
+	// RedisUtil.returnResource(confJedis);
+	// return new Turple2(3, null);
+	// }
+	// if (!out.equals(index)) {
+	// RedisUtil.returnResource(confJedis);
+	// return new Turple2(1, out);
+	// }
+	// RedisUtil.returnResource(confJedis);
+	// return new Turple2(0, out);
+	// }
 
 	private String timeStamp2Date(String seconds, String format) {
 		if (seconds == null || seconds.isEmpty() || seconds.equals("null")) {

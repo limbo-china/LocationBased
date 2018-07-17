@@ -23,5 +23,6 @@
 	<classpathentry kind="lib" path="lib/oscarJDBC.jar"/>
 	<classpathentry kind="lib" path="lib/oscarClusterJDBC.jar"/>
 	<classpathentry kind="lib" path="lib/SoftCrypto.jar"/>
+	<classpathentry kind="lib" path="lib/jni_DBControlApi.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

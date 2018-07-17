@@ -2,7 +2,7 @@ package cn.ac.iie.hy.centralserver.data;
 
 import java.io.Serializable;
 
-public class TraceQueryLBS implements Serializable{
+public class TraceDBData implements Serializable{
 	/**
 	 * 
 	 */

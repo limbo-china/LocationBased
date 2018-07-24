@@ -2,9 +2,18 @@ package cn.ac.iie.jc.query.data;
 
 public class IndexToQuery {
 
+	private String groupId = "";
 	private String imsi = "";
 	private String msisdn = "";
 	private int status = -1;
+
+	public String getGroupId() {
+		return groupId;
+	}
+
+	public void setGroupId(String groupId) {
+		this.groupId = groupId;
+	}
 
 	public String getImsi() {
 		return imsi;

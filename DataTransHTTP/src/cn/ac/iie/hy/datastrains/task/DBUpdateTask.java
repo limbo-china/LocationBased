@@ -10,7 +10,7 @@ import java.util.Properties;
 
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
-import cn.ac.iie.hy.datatrains.metadata.SMetaData;
+
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.ShardedJedis;
@@ -19,36 +19,13 @@ import cn.ac.iie.hy.datatrains.dbutils.RedisUtilList;
 import cn.ac.iie.hy.datatrains.dbutils.RedisUtilPro;
 import cn.ac.iie.hy.datatrains.dbutils.ShardedJedisUtil;
 import cn.ac.iie.hy.datatrains.handler.DataDispatchHandler;
+import cn.ac.iie.hy.datatrains.metadata.SMetaData;
 
-
-/**
- * ━━━━━━神兽出没━━━━━━
- * 　　　┏┓　　　┏┓
- * 　　┏┛┻━━━┛┻┓
- * 　　┃　　　　　　　┃
- * 　　┃　　　━　　　┃
- * 　　┃　┳┛　┗┳　┃
- * 　　┃　　　　　　　┃
- * 　　┃　　　┻　　　┃
- * 　　┃　　　　　　　┃
- * 　　┗━┓　　　┏━┛
- * 　　　　┃　　　┃神兽保佑, 永无BUG!
- * 　　　　┃　　　┃Code is far away from bug with the animal protecting
- * 　　　　┃　　　┗━━━┓
- * 　　　　┃　　　　　　　┣┓
- * 　　　　┃　　　　　　　┏┛
- * 　　　　┗┓┓┏━┳┓┏┛
- * 　　　　　┃┫┫　┃┫┫
- * 　　　　　┗┻┛　┗┻┛
- * ━━━━━━感觉萌萌哒━━━━━━
- * @author zhangyu
- *
- */
 public class DBUpdateTask implements Runnable {
 
 	private List<SMetaData> al = null;
 	private static Properties prop = new Properties();
-	
+
 	Long centerPushInternal = 0L;
 	Long provincePushInternal = 0L;
 	static Logger logger = null;
@@ -71,37 +48,47 @@ public class DBUpdateTask implements Runnable {
 		this.al = al;
 	}
 
-	private String SData2Str(SMetaData smd, long lastPushTime, long newCenterPushTime, long newProvincePushTime) {
-		return smd.getImsi() + ";" + smd.getImei() + ";" + smd.getMsisdn() + ";" + smd.getRegionCode() + ";"
-				+ smd.getLac() + ";" + smd.getCi() + ";" + smd.getUli() + ";" + smd.getHomeCode() + ";" + smd.getLngi()
-				+ ";" + smd.getLati() + ";" + smd.getTimestamp() + ";" + lastPushTime + ";" + newCenterPushTime + ";" + newProvincePushTime + ";";
-		
+	private String SData2Str(SMetaData smd, long lastPushTime,
+			long newCenterPushTime, long newProvincePushTime) {
+		return smd.getImsi() + ";" + smd.getImei() + ";" + smd.getMsisdn()
+				+ ";" + smd.getRegionCode() + ";" + smd.getLac() + ";"
+				+ smd.getCi() + ";" + smd.getUli() + ";" + smd.getHomeCode()
+				+ ";" + smd.getLngi() + ";" + smd.getLati() + ";"
+				+ smd.getTimestamp() + ";" + lastPushTime + ";"
+				+ newCenterPushTime + ";" + newProvincePushTime + ";";
+
 	}
+
 	private String SData2Str2(SMetaData smd) {
-		return smd.getImsi() + ";" + smd.getImei() + ";" + smd.getMsisdn() + ";" + smd.getRegionCode() + ";"
-				+ smd.getLac() + ";" + smd.getCi() + ";" + smd.getUli() + ";" + smd.getHomeCode() + ";" + smd.getLngi()
-				+ ";" + smd.getLati() + ";" + smd.getTimestamp() + ";";
+		return smd.getImsi() + ";" + smd.getImei() + ";" + smd.getMsisdn()
+				+ ";" + smd.getRegionCode() + ";" + smd.getLac() + ";"
+				+ smd.getCi() + ";" + smd.getUli() + ";" + smd.getHomeCode()
+				+ ";" + smd.getLngi() + ";" + smd.getLati() + ";"
+				+ smd.getTimestamp() + ";";
 	}
-	
+
 	private void dataPushUpdate(SMetaData smd, String profile, Jedis jedis) {
 
 		String urls = profile.split(";")[3];
 		String jobIDs = profile.split(";")[2];
-		if(urls.split(",").length != jobIDs.split(",").length){
+		if (urls.split(",").length != jobIDs.split(",").length) {
 			logger.error("pro error : " + profile);
 		}
-		for(int i = 0; i < jobIDs.split(",").length; i++){
+		for (int i = 0; i < jobIDs.split(",").length; i++) {
 			String jobID = jobIDs.split(",")[i];
 			String url = urls.split(",")[i];
-			String result = smd.getImsi() + ";" + smd.getImei() + ";" + smd.getMsisdn() + ";" + smd.getLac() + ";"
-					+ smd.getCi() + ";" + smd.getUli() + ";" + smd.getTimestamp() + ";" + url + ";" + smd.getRegionCode() + ";" + smd.getHomeCode();
+			String result = smd.getImsi() + ";" + smd.getImei() + ";"
+					+ smd.getMsisdn() + ";" + smd.getLac() + ";" + smd.getCi()
+					+ ";" + smd.getUli() + ";" + smd.getTimestamp() + ";" + url
+					+ ";" + smd.getRegionCode() + ";" + smd.getHomeCode();
 			jedis.lpush("JOBID_" + jobID, result);
-			//ljedis.set("POSITION_" + smd.getMsisdn(), result);
+			// ljedis.set("POSITION_" + smd.getMsisdn(), result);
 		}
-		
+
 	}
 
-	private boolean dbUpdateTaskRedis(SMetaData smd, String value, Jedis configJedis, ShardedJedisPipeline cachePipe, Jedis listJedis) {
+	private boolean dbUpdateTaskRedis(SMetaData smd, String value,
+			Jedis configJedis, ShardedJedisPipeline cachePipe, Jedis listJedis) {
 		String key = smd.getImsi();
 
 		if (key.length() != 15) {
@@ -110,89 +97,93 @@ public class DBUpdateTask implements Runnable {
 		long lastPushTime = 0L;
 		long lastCenterPushTime = 0L;
 		long lastProvincePushTime = 0L;
-		
 
 		if (value != null) {
-			try{
-				if(value.split(";").length < 12){
-					lastPushTime =  Long.parseLong(value.split(";")[value.split(";").length - 1]);
+			try {
+				if (value.split(";").length < 12) {
+					lastPushTime = Long.parseLong(value.split(";")[value
+							.split(";").length - 1]);
+				} else {
+					lastPushTime = Long.parseLong(value.split(";")[11]);
 				}
-				else{
-					lastPushTime =  Long.parseLong(value.split(";")[11]);
-				}
-				if(value.split(";").length >= 14){
+				if (value.split(";").length >= 14) {
 					lastCenterPushTime = Long.parseLong(value.split(";")[12]);
 					lastProvincePushTime = Long.parseLong(value.split(";")[13]);
 				}
-			}
-			catch(Exception e){
+			} catch (Exception e) {
 				logger.error(e);
 			}
-			
+
 			Long newCenterPushTime = 0L;
 			Long newProvincePushTime = 0L;
-			Long localTime = System.currentTimeMillis()/1000;
+			Long localTime = System.currentTimeMillis() / 1000;
 			boolean ifChange = false;
 
-			if(centerPushInternal != 0){
-				if(lastCenterPushTime == 0L || localTime - lastCenterPushTime > centerPushInternal){//第一次或者超过了时间区间
-					//configJedis.rpush("CenterPushQueue", SData2Str2(smd));
+			if (centerPushInternal != 0) {
+				if (lastCenterPushTime == 0L
+						|| localTime - lastCenterPushTime > centerPushInternal) {// 绗竴娆℃垨鑰呰秴杩囦簡鏃堕棿鍖洪棿
+					// configJedis.rpush("CenterPushQueue", SData2Str2(smd));
 					centerLoadList.add(SData2Str2(smd));
-					
+
 					newCenterPushTime = localTime;
 					ifChange = true;
-				}
-				else{
+				} else {
 					newCenterPushTime = lastCenterPushTime;
 				}
 			}
-			if(provincePushInternal != 0){
-				if(lastProvincePushTime == 0L || localTime - lastProvincePushTime > provincePushInternal){//第一次或者超过了时间区间
-					//configJedis.rpush("PronvincePushQueue", SData2Str2(smd));
+			if (provincePushInternal != 0) {
+				if (lastProvincePushTime == 0L
+						|| localTime - lastProvincePushTime > provincePushInternal) {// 绗竴娆℃垨鑰呰秴杩囦簡鏃堕棿鍖洪棿
+					// configJedis.rpush("PronvincePushQueue", SData2Str2(smd));
 					provinceLoadList.add(SData2Str2(smd));
-					
+
 					newProvincePushTime = localTime;
 					ifChange = true;
-				}
-				else{
+				} else {
 					newProvincePushTime = lastProvincePushTime;
 				}
 			}
-			
-			
+
 			String uli = value.split(";")[6];
-			if(!smd.getUli().equals(uli) || ifChange){
-				cachePipe.set(key, SData2Str(smd, lastPushTime, newCenterPushTime, newProvincePushTime));
+			if (!smd.getUli().equals(uli) || ifChange) {
+				cachePipe.set(
+						key,
+						SData2Str(smd, lastPushTime, newCenterPushTime,
+								newProvincePushTime));
 
 				changedList.add(smd);
-				
+
 			}
-			
-			if (smd.getTimestamp() - lastPushTime > 60 * 60 * Integer.valueOf(prop.getProperty("loadInterval")) * 1  ) {
-				cachePipe.set(key, SData2Str(smd, smd.getTimestamp(), newCenterPushTime, newProvincePushTime));
+
+			if (smd.getTimestamp() - lastPushTime > 60 * Integer.valueOf(prop
+					.getProperty("loadInterval"))) {
+				cachePipe.set(
+						key,
+						SData2Str(smd, smd.getTimestamp(), newCenterPushTime,
+								newProvincePushTime));
 				loadList.add(SData2Str(smd, smd.getTimestamp(), 0L, 0L));
-				
+
 			}
-			
-		
+
 		} else {
-//			cachePipe.set(key, SData2Str(smd, smd.getTimestamp()));
-//			configJedis.rpush("loadqueue", SData2Str(smd, smd.getTimestamp()));
-			//count2++;
+			// cachePipe.set(key, SData2Str(smd, smd.getTimestamp()));
+			// configJedis.rpush("loadqueue", SData2Str(smd,
+			// smd.getTimestamp()));
+			// count2++;
 		}
 		return true;
 	}
-	
+
 	@Override
 	public void run() {
-		
-		Jedis configJedis =null;
+
+		Jedis configJedis = null;
 		ShardedJedis cacheJedis = null;
 		ShardedJedis wCacheJedis = null;
 		Jedis listJedis = null;
-		
+
 		long startTime = System.currentTimeMillis();
-		
+
 		try {
 
 			cacheJedis = ShardedJedisUtil.getSource();
@@ -203,16 +194,17 @@ public class DBUpdateTask implements Runnable {
 			ShardedJedisPipeline cachePipe = cacheJedis.pipelined();
 
 			HashMap<String, SMetaData> imsiMap = new HashMap<>();
-			
-			if(configJedis.get("CenterPushInternal") != null){
-				centerPushInternal = Long.parseLong(configJedis.get("CenterPushInternal"));
+
+			if (configJedis.get("CenterPushInternal") != null) {
+				centerPushInternal = Long.parseLong(configJedis
+						.get("CenterPushInternal"));
 			}
-			
-			if(configJedis.get("ProvincePushInternal") != null){
-				provincePushInternal = Long.parseLong(configJedis.get("ProvincePushInternal"));
+
+			if (configJedis.get("ProvincePushInternal") != null) {
+				provincePushInternal = Long.parseLong(configJedis
+						.get("ProvincePushInternal"));
 			}
-			
-			
+
 			for (Iterator<SMetaData> it = al.iterator(); it.hasNext();) {
 				SMetaData smd = it.next();
 				if (imsiMap.containsKey(smd.getImsi())) {
@@ -230,71 +222,76 @@ public class DBUpdateTask implements Runnable {
 				String rs = (String) it.next();
 				if (rs != null && rs.split(";").length > 2) {
 					SMetaData smd = imsiMap.get(rs.split(";")[0]);
-					dbUpdateTaskRedis(smd, rs, configJedis, wCachePipe, listJedis);
+					dbUpdateTaskRedis(smd, rs, configJedis, wCachePipe,
+							listJedis);
 					imsiMap.remove(rs.split(";")[0]);
 				}
 			}
-			
-			if(configJedis.llen("CenterPushQueue") > 1000000){
+
+			if (configJedis.llen("CenterPushQueue") > 1000000) {
 				configJedis.del("CenterPushQueue");
 			}
-			
-			if(configJedis.llen("loadqueue") > 1000000){
+
+			if (configJedis.llen("loadqueue") > 1000000) {
 				configJedis.del("loadqueue");
 				logger.error("loadqueue full");
 			}
-			
-			if(configJedis.llen("PronvincePushQueue") > 1000000){
+
+			if (configJedis.llen("PronvincePushQueue") > 1000000) {
 				configJedis.del("PronvincePushQueue");
 			}
-			
+
 			Pipeline loadPipe = configJedis.pipelined();
-			
-			for(String data : provinceLoadList){
+
+			for (String data : provinceLoadList) {
 				loadPipe.rpush("PronvincePushQueue", data);
 			}
-			
-			for(String data : centerLoadList){
+
+			for (String data : centerLoadList) {
 				loadPipe.rpush("CenterPushQueue", data);
 			}
-			
-			for(String data : loadList){
+
+			for (String data : loadList) {
 				loadPipe.rpush("loadqueue", data);
 			}
 
 			for (SMetaData smd : imsiMap.values()) {
-				wCachePipe.set(smd.getImsi(), SData2Str(smd, smd.getTimestamp(), 0L, 0L));
-				loadPipe.rpush("loadqueue", SData2Str(smd, smd.getTimestamp(), 0L, 0L));
+				wCachePipe.set(smd.getImsi(),
+						SData2Str(smd, smd.getTimestamp(), 0L, 0L));
+				loadPipe.rpush("loadqueue",
+						SData2Str(smd, smd.getTimestamp(), 0L, 0L));
 			}
 
 			wCachePipe.sync();
 			loadPipe.sync();
-			
+
 			Pipeline configPipe = listJedis.pipelined();
-			
-			Map<String, SMetaData> changedMap= new HashMap<>();
-			for(SMetaData smd : changedList){
+
+			Map<String, SMetaData> changedMap = new HashMap<>();
+			for (SMetaData smd : changedList) {
 				configPipe.get("SUB_MSISDN_" + smd.getMsisdn());
-				if(smd.getMsisdn().length()>=11){
+				if (smd.getMsisdn().length() >= 11) {
 					changedMap.put(smd.getMsisdn(), smd);
 				}
-				
+
 			}
 
 			List<Object> sublist = configPipe.syncAndReturnAll();
-			for(Object obj : sublist){
-				if(obj != null){
+			for (Object obj : sublist) {
+				if (obj != null) {
 					String profile = obj.toString();
-					dataPushUpdate(changedMap.get(profile.split(";")[1]), profile, configJedis);
+					dataPushUpdate(changedMap.get(profile.split(";")[1]),
+							profile, configJedis);
 				}
 			}
-			
+
 			RedisUtilPro.returnResource(configJedis);
 			ShardedJedisUtil.returnResource(cacheJedis);
 			ShardedJedisUtil.returnResource(wCacheJedis);
 			RedisUtilList.returnResource(listJedis);
 			long endTime = System.currentTimeMillis();
-			logger.info(imsiMap.size() + " record with time :" + (endTime - startTime));
+			logger.info(imsiMap.size() + " record with time :"
+					+ (endTime - startTime));
 		} catch (Exception e) {
 			RedisUtilPro.returnBrokenResource(configJedis);
 			ShardedJedisUtil.returnBrokenResource(cacheJedis);

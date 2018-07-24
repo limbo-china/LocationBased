@@ -3,6 +3,9 @@ package cn.ac.iie.jc.query.data;
 public class PersonResult {
 
 	int status = -1;
+	String source = "";
+	String groupId = "";
+	String gourpName = "";
 	String imsi = "";
 	String imei = "";
 	String msisdn = "";
@@ -28,6 +31,30 @@ public class PersonResult {
 
 	public void setStatus(int status) {
 		this.status = status;
+	}
+
+	public String getSource() {
+		return source;
+	}
+
+	public void setSource(String source) {
+		this.source = source;
+	}
+
+	public String getGroupId() {
+		return groupId;
+	}
+
+	public void setGroupId(String groupId) {
+		this.groupId = groupId;
+	}
+
+	public String getGourpName() {
+		return gourpName;
+	}
+
+	public void setGourpName(String gourpName) {
+		this.gourpName = gourpName;
 	}
 
 	public String getImsi() {

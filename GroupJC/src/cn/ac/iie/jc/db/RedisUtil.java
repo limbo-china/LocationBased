@@ -53,6 +53,26 @@ public class RedisUtil {
 		return infoList;
 	}
 
+	public static ShardedJedis getJedisByIpList(String ipList) {
+		List<JedisShardInfo> infoList = new ArrayList<JedisShardInfo>();
+
+		String[] hosts = ipList.split(" ");
+		if (jedisPoolMap.get(ipList) == null) {
+			for (String hostPair : hosts) {
+				String ip = hostPair.split(":")[0];
+				int port = Integer.parseInt(hostPair.split(":")[1]);
+				infoList.add(new JedisShardInfo(ip, port));
+			}
+			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig,
+					infoList);
+			jedisPoolMap.put(ipList, jedisPool);
+		}
+		if (jedisPoolMap.get(ipList) != null)
+			return jedisPoolMap.get(ipList).getResource();
+
+		return null;
+	}
+
 	private static ShardedJedis getResource(String para) {
 		ShardedJedisPool jedisPool = jedisPoolMap.get(para);
 		if (jedisPool != null)

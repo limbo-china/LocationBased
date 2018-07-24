@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -21,6 +22,7 @@ import redis.clients.jedis.ShardedJedisPipeline;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import cn.ac.iie.jc.query.config.ProvinceRedisMap;
 import cn.ac.iie.jc.query.data.IndexToQuery;
+import cn.ac.iie.jc.query.data.JCGroup;
 import cn.ac.iie.jc.query.data.JCPerson;
 import cn.ac.iie.jc.query.data.PersonResult;
 import cn.ac.iie.jc.query.data.QueryRequest;
@@ -59,6 +61,7 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			ServletException {
 
 		QueryRequest request = parseRequest(baseRequest, httpServletRequest);
+		HashMap<String, JCGroup> groupMap = fetchJCGroupConfig();
 
 		List<IndexToQuery> indexList = fetchIndexListByPage(request);
 		checkToken(request, indexList);
@@ -66,7 +69,8 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			getImsi(indexList);
 
 		HashMap<String, List<IndexToQuery>> provinceMap = getProvince(indexList);
-		HashMap<IndexToQuery, PersonResult> resultMap = initResultMap(indexList);
+		HashMap<IndexToQuery, PersonResult> resultMap = initResultMap(
+				indexList, groupMap);
 
 		for (Map.Entry<String, List<IndexToQuery>> mapEntry : provinceMap
 				.entrySet()) {
@@ -100,6 +104,22 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		return request;
 	}
 
+	private HashMap<String, JCGroup> fetchJCGroupConfig() {
+		HashMap<String, JCGroup> groupMap = new HashMap<String, JCGroup>();
+
+		ShardedJedis jcRuleJedis = RedisUtil.getJedis("jcRuleIp");
+		Set<String> groupIds = jcRuleJedis.hkeys("JCGroup");
+
+		for (String groupId : groupIds) {
+			String rule = jcRuleJedis.hget("JCGroup", groupId);
+			JCGroup group = JCGroup.newInstanceFromJson(rule);
+			groupMap.put(groupId, group);
+		}
+		RedisUtil.returnJedis(jcRuleJedis, "jcRuleIp");
+		return groupMap;
+
+	}
+
 	private List<IndexToQuery> fetchIndexListByPage(QueryRequest request) {
 
 		List<IndexToQuery> indexList = new ArrayList<IndexToQuery>();
@@ -112,6 +132,7 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		for (String value : values) {
 			JCPerson person = JCPerson.newInstanceFromJson(value);
 			IndexToQuery index = new IndexToQuery();
+			index.setGroupId(person.getGroupId());
 			index.setMsisdn(person.getPhone());
 			indexList.add(index);
 		}
@@ -237,11 +258,16 @@ public class DataDetailQueryHandler extends AbstractHandler {
 	}
 
 	private HashMap<IndexToQuery, PersonResult> initResultMap(
-			List<IndexToQuery> indexList) {
+			List<IndexToQuery> indexList, HashMap<String, JCGroup> groupMap) {
 		HashMap<IndexToQuery, PersonResult> resultMap = new HashMap<IndexToQuery, PersonResult>();
 
 		for (IndexToQuery aIndex : indexList) {
 			PersonResult result = new PersonResult();
+			String groupId = aIndex.getGroupId();
+			JCGroup group = groupMap.get(groupId);
+			result.setGroupId(groupId);
+			result.setGourpName(group.getGroupName());
+			result.setSource(group.getSource());
 			result.setStatus(aIndex.getStatus());
 			result.setImsi(aIndex.getImsi());
 			result.setMsisdn(aIndex.getMsisdn());

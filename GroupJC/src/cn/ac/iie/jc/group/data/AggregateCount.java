@@ -1,5 +1,7 @@
 package cn.ac.iie.jc.group.data;
 
+import com.google.gson.Gson;
+
 public class AggregateCount {
 
 	private int total = 0;
@@ -30,4 +32,8 @@ public class AggregateCount {
 		outer++;
 	}
 
+	public String toJson() {
+		Gson gson = new Gson();
+		return gson.toJson(this);
+	}
 }

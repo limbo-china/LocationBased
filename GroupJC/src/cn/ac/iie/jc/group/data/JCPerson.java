@@ -5,12 +5,10 @@ import com.google.gson.Gson;
 public class JCPerson {
 
 	private String phone;
-	private String provinceId;
-	private String provinceName;
-	private String createBy;
-	private String createTime;
-	private String updateBy;
-	private String updateTime;
+	private String createby;
+	private String createtime;
+	private String updateby;
+	private String updatetime;
 
 	private JCPerson() {
 	}
@@ -19,64 +17,46 @@ public class JCPerson {
 		return phone;
 	}
 
-	public String getProvinceId() {
-		return provinceId;
-	}
-
-	public String getProvinceName() {
-		return provinceName;
-	}
-
 	public String getCreateBy() {
-		return createBy;
+		return createby;
 	}
 
 	public String getCreateTime() {
-		return createTime;
+		return createtime;
 	}
 
 	public String getUpdateBy() {
-		return updateBy;
+		return updateby;
 	}
 
 	public String getUpdateTime() {
-		return updateTime;
+		return updatetime;
 	}
 
 	public void setPhone(String phone) {
 		this.phone = phone;
 	}
 
-	public void setProvinceId(String provinceId) {
-		this.provinceId = provinceId;
-	}
-
-	public void setProvinceName(String provinceName) {
-		this.provinceName = provinceName;
-	}
-
 	public void setCreateBy(String createBy) {
-		this.createBy = createBy;
+		this.createby = createBy;
 	}
 
 	public void setCreateTime(String createTime) {
-		this.createTime = createTime;
+		this.createtime = createTime;
 	}
 
 	public void setUpdateBy(String updateBy) {
-		this.updateBy = updateBy;
+		this.updateby = updateBy;
 	}
 
 	public void setUpdateTime(String updateTime) {
-		this.updateTime = updateTime;
+		this.updatetime = updateTime;
 	}
 
 	@Override
 	public String toString() {
-		return "JCPerson [phone=" + phone + ", provinceId=" + provinceId
-				+ ", provinceName=" + provinceName + ", createBy=" + createBy
-				+ ", createTime=" + createTime + ", updateBy=" + updateBy
-				+ ", updateTime=" + updateTime + "]";
+		return "JCPerson [phone=" + phone + ", createBy=" + createby + ", createTime=" + createtime + ", updateBy="
+				+ updateby + ", updateTime=" + updatetime + "]";
 	}
 
 	public static JCPerson newFromJson(String json) {

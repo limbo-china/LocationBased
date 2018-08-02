@@ -36,6 +36,10 @@ public class CityPopulation {
 		this.count++;
 	}
 
+	public void increCountByN(int n) {
+		this.count = this.count + n;
+	}
+
 	public String getDayId() {
 		return dayId;
 	}

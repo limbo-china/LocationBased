@@ -3,12 +3,13 @@ package cn.ac.iie.jc.db;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import cn.ac.iie.jc.config.ConfigUtil;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPool;
-import cn.ac.iie.jc.config.ConfigUtil;
 
 public class RedisUtil {
 
@@ -34,8 +35,7 @@ public class RedisUtil {
 
 		if (jedisPoolMap.get(para) == null) {
 			List<JedisShardInfo> infoList = getInfoList(para);
-			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig,
-					infoList);
+			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig, infoList);
 			jedisPoolMap.put(para, jedisPool);
 		}
 		return getResource(para);
@@ -53,7 +53,7 @@ public class RedisUtil {
 		return infoList;
 	}
 
-	public static ShardedJedis getJedisByIpList(String ipList) {
+	public synchronized static ShardedJedis getJedisByIpList(String ipList) {
 		List<JedisShardInfo> infoList = new ArrayList<JedisShardInfo>();
 
 		String[] hosts = ipList.split(" ");
@@ -63,8 +63,7 @@ public class RedisUtil {
 				int port = Integer.parseInt(hostPair.split(":")[1]);
 				infoList.add(new JedisShardInfo(ip, port));
 			}
-			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig,
-					infoList);
+			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig, infoList);
 			jedisPoolMap.put(ipList, jedisPool);
 		}
 		if (jedisPoolMap.get(ipList) != null)
@@ -87,10 +86,15 @@ public class RedisUtil {
 			jedisPool.returnBrokenResource(jedis);
 	}
 
-	public static void returnJedis(ShardedJedis jedis, String para) {
+	public synchronized static void returnJedis(ShardedJedis jedis, String para) {
 		ShardedJedisPool jedisPool = jedisPoolMap.get(para);
 		if (jedis != null && jedisPool != null)
 			jedisPool.returnResource(jedis);
+	}
+
+	public void closeAllPool() {
+		for (Map.Entry<String, ShardedJedisPool> entry : jedisPoolMap.entrySet())
+			entry.getValue().close();
 	}
 
 }

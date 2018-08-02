@@ -38,6 +38,10 @@ public class ProvincePopulation {
 		this.count++;
 	}
 
+	public void increCountByN(int n) {
+		this.count = this.count + n;
+	}
+
 	public String getDayId() {
 		return dayId;
 	}
@@ -62,6 +66,10 @@ public class ProvincePopulation {
 		this.updateTime = System.currentTimeMillis() / 1000;
 	}
 
+	public HashMap<String, CityPopulation> getCityDistribution() {
+		return cityDistribution;
+	}
+
 	public void increCityPopulationByCity(City city) {
 		if (city.getCityName() == null)
 			return;
@@ -77,6 +85,15 @@ public class ProvincePopulation {
 			cityDistribution.put(cityId, popu);
 		} else
 			cityDistribution.get(cityId).increCount();
+	}
+
+	public void increCityPopulationByCityPopulation(CityPopulation popu) {
+
+		String cityId = popu.getCityId();
+		if (cityDistribution.get(cityId) == null)
+			cityDistribution.put(cityId, popu);
+		else
+			cityDistribution.get(cityId).increCountByN(popu.getCount());
 	}
 
 	private static String stampToDate(long stamp) {

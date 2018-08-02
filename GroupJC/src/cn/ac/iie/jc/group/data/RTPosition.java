@@ -5,14 +5,15 @@ public class RTPosition {
 	private String imsi;
 	private String imei;
 	private String msisdn;
-	private String provinceId;
-	private String provinceName;
-	private String cityId;
-	private String cityName;
-	private String areaId;
-	private String areaName;
-	private String address;
+	private String regionCode;
+	private String uli;
+	private double lngi = 0;
+	private double lati = 0;
 	private String time;
+	private String province;
+	private String city;
+	private String district;
+	private String baseinfo;
 
 	public String getImsi() {
 		return imsi;
@@ -38,60 +39,36 @@ public class RTPosition {
 		this.msisdn = msisdn;
 	}
 
-	public String getProvinceId() {
-		return provinceId;
+	public String getRegionCode() {
+		return regionCode;
 	}
 
-	public void setProvinceId(String provinceId) {
-		this.provinceId = provinceId;
+	public void setRegionCode(String regionCode) {
+		this.regionCode = regionCode;
 	}
 
-	public String getProvinceName() {
-		return provinceName;
+	public String getUli() {
+		return uli;
 	}
 
-	public void setProvinceName(String provinceName) {
-		this.provinceName = provinceName;
+	public void setUli(String uli) {
+		this.uli = uli;
 	}
 
-	public String getCityId() {
-		return cityId;
+	public double getLngi() {
+		return lngi;
 	}
 
-	public void setCityId(String cityId) {
-		this.cityId = cityId;
+	public void setLngi(double lngi) {
+		this.lngi = lngi;
 	}
 
-	public String getCityName() {
-		return cityName;
+	public double getLati() {
+		return lati;
 	}
 
-	public void setCityName(String cityName) {
-		this.cityName = cityName;
-	}
-
-	public String getAreaId() {
-		return areaId;
-	}
-
-	public void setAreaId(String areaId) {
-		this.areaId = areaId;
-	}
-
-	public String getAreaName() {
-		return areaName;
-	}
-
-	public void setAreaName(String areaName) {
-		this.areaName = areaName;
-	}
-
-	public String getAddress() {
-		return address;
-	}
-
-	public void setAddress(String address) {
-		this.address = address;
+	public void setLati(double lati) {
+		this.lati = lati;
 	}
 
 	public String getTime() {
@@ -102,10 +79,42 @@ public class RTPosition {
 		this.time = time;
 	}
 
+	public String getProvince() {
+		return province;
+	}
+
+	public void setProvince(String province) {
+		this.province = province;
+	}
+
+	public String getCity() {
+		return city;
+	}
+
+	public void setCity(String city) {
+		this.city = city;
+	}
+
+	public String getDistrict() {
+		return district;
+	}
+
+	public void setDistrict(String district) {
+		this.district = district;
+	}
+
+	public String getBaseinfo() {
+		return baseinfo;
+	}
+
+	public void setBaseinfo(String baseinfo) {
+		this.baseinfo = baseinfo;
+	}
+
 	@Override
 	public String toString() {
-		return imsi + ";" + imei + ";" + msisdn + ";" + provinceId + ";"
-				+ provinceName + ";" + cityId + ";" + cityName + ";" + areaId
-				+ ";" + areaName + ";" + address + ";" + time;
+		return imsi + "," + imei + "," + msisdn + "," + regionCode + "," + uli + "," + lngi + "," + lati + "," + time
+				+ "," + province + "," + city + "," + district + "," + baseinfo;
 	}
+
 }

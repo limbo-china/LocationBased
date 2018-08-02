@@ -6,17 +6,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import redis.clients.jedis.ShardedJedis;
-import redis.clients.jedis.ShardedJedisPipeline;
+import cn.ac.iie.jc.config.ConfigUtil;
 import cn.ac.iie.jc.db.RedisUtil;
 import cn.ac.iie.jc.group.data.Group;
 import cn.ac.iie.jc.group.data.JCPerson;
 import cn.ac.iie.jc.thread.ThreadPoolManager;
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPipeline;
 
 public class GroupDistributionTask {
 
-	private static ThreadPoolManager threadPool = ThreadPoolManager
-			.getInstance();
+	private static ThreadPoolManager threadPool = ThreadPoolManager.getInstance();
 	private HashMap<Group, List<String>> personListMap = new HashMap<Group, List<String>>();
 
 	public void exec() {
@@ -28,13 +28,14 @@ public class GroupDistributionTask {
 		String para1 = "groupRedis";
 		String para2 = "msisdnRedis";
 		ShardedJedis groupJedis = RedisUtil.getJedis(para1);
-		Set<String> groupIds = groupJedis.hkeys("JCGroup");
+		Set<String> groupIds = groupJedis.hkeys(ConfigUtil.getString("provinceName") + "_JCGroup");
 
 		ShardedJedis msisdnJedis = RedisUtil.getJedis(para2);
 
 		for (String groupId : groupIds) {
-			String rule = groupJedis.hget("JCGroup", groupId);
+			String rule = groupJedis.hget(ConfigUtil.getString("provinceName") + "_JCGroup", groupId);
 			Group group = Group.newFromJson(rule);
+			group.setGroupId(groupId);
 
 			List<String> personJsons = groupJedis.lrange(groupId, 0, -1);
 			List<String> imsis = new ArrayList<String>();
@@ -45,8 +46,11 @@ public class GroupDistributionTask {
 			}
 			List<Object> imsiResp = msisdnPipeline.syncAndReturnAll();
 
-			for (Object imsiRs : imsiResp)
+			for (Object imsiRs : imsiResp) {
+				if (imsiRs == null)
+					continue;
 				imsis.add((String) imsiRs);
+			}
 			personListMap.put(group, imsis);
 		}
 		RedisUtil.returnJedis(groupJedis, para1);
@@ -60,11 +64,22 @@ public class GroupDistributionTask {
 			List<String> imsis = entry.getValue();
 			threadPool.addExecuteTask(new DistributionExecutor(group, imsis));
 		}
-
+		threadPool.shutdown();
 	}
 
 	public static void main(String[] args) {
 		GroupDistributionTask task = new GroupDistributionTask();
 		task.exec();
+
+		while (!threadPool.isTaskEnd()) {
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		DistributionExecutor.writeWholeToDB();
+		System.exit(0);
 	}
 }

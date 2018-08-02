@@ -46,21 +46,19 @@ public final class ThreadPoolManager {
 		}
 	};
 
-	private final ScheduledExecutorService scheduler = Executors
-			.newScheduledThreadPool(1);
+	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-	protected final ScheduledFuture<?> mTaskHandler = scheduler
-			.scheduleAtFixedRate(mAccessBufferThread, 0, PERIOD_TASK_QOS,
-					TimeUnit.MILLISECONDS);
+	protected final ScheduledFuture<?> mTaskHandler = scheduler.scheduleAtFixedRate(mAccessBufferThread, 0,
+			PERIOD_TASK_QOS, TimeUnit.MILLISECONDS);
 
-	private final ThreadPoolExecutor mThreadPool = new ThreadPoolExecutor(
-			SIZE_CORE_POOL, SIZE_MAX_POOL, TIME_KEEP_ALIVE, TimeUnit.SECONDS,
-			new ArrayBlockingQueue<Runnable>(SIZE_WORK_QUEUE), mHandler);
+	private final ThreadPoolExecutor mThreadPool = new ThreadPoolExecutor(SIZE_CORE_POOL, SIZE_MAX_POOL,
+			TIME_KEEP_ALIVE, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(SIZE_WORK_QUEUE), mHandler);
 
 	private ThreadPoolManager() {
 	}
 
 	public void perpare() {
+
 		if (mThreadPool.isShutdown() && !mThreadPool.prestartCoreThread()) {
 			@SuppressWarnings("unused")
 			int startThread = mThreadPool.prestartAllCoreThreads();
@@ -77,7 +75,7 @@ public final class ThreadPoolManager {
 		}
 	}
 
-	protected boolean isTaskEnd() {
+	public boolean isTaskEnd() {
 		if (mThreadPool.getActiveCount() == 0) {
 			return true;
 		} else {

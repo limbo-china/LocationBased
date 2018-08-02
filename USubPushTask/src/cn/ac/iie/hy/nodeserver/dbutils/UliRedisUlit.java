@@ -9,18 +9,18 @@ public class UliRedisUlit {
 
 	private static Properties prop = new Properties();
 	private static Jedis jedis = null;
-	static{
+	static {
 		try {
 			prop.load(new FileInputStream("data-node.properties"));
 			String ip = prop.getProperty("uliRedisIp").split(":")[0];
 			int port = Integer.valueOf(prop.getProperty("uliRedisIp").split(":")[1]);
-			jedis = new Jedis(ip, port);
-		} catch (Exception e){
+			jedis = new Jedis(ip, port, 10000);
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
-	public static Jedis getUliRedisResource(){
+
+	public static Jedis getUliRedisResource() {
 		return jedis;
 	}
 }

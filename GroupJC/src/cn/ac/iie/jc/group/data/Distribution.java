@@ -1,13 +1,13 @@
 package cn.ac.iie.jc.group.data;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Distribution {
 
 	private Group group;
 	private AggregateCount aggregate = new AggregateCount();
-	private List<ProvincePopulation> provinceDisribution = new ArrayList<ProvincePopulation>();
+	private HashMap<String, ProvincePopulation> provinceDisribution = new HashMap<String, ProvincePopulation>();
 
 	public Group getGroup() {
 		return group;
@@ -17,15 +17,15 @@ public class Distribution {
 		return aggregate;
 	}
 
-	public void increTotal() {
+	public synchronized void increTotal() {
 		this.aggregate.increTotal();
 	}
 
-	public void increInner() {
+	public synchronized void increInner() {
 		this.aggregate.increInner();
 	}
 
-	public void increOuter() {
+	public synchronized void increOuter() {
 		this.aggregate.increOuter();
 	}
 
@@ -33,8 +33,20 @@ public class Distribution {
 		this.group = group;
 	}
 
-	public void addProvincePopulation(ProvincePopulation popu) {
-		provinceDisribution.add(popu);
+	private synchronized boolean containProvince(String prov) {
+		return provinceDisribution.containsKey(prov);
+	}
+
+	public synchronized void addProvincePopulation(ProvincePopulation popu) {
+		if (!containProvince(popu.getProvinceId()))
+			provinceDisribution.put(popu.getProvinceId(), popu);
+		else {
+			ProvincePopulation originPopu = provinceDisribution.get(popu.getProvinceId());
+			originPopu.increCountByN(popu.getCount());
+
+			for (Map.Entry<String, CityPopulation> entry : originPopu.getCityDistribution().entrySet())
+				originPopu.increCityPopulationByCityPopulation(entry.getValue());
+		}
 	}
 
 }

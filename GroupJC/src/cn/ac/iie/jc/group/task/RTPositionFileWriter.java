@@ -7,10 +7,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
-import redis.clients.jedis.ShardedJedis;
-import redis.clients.jedis.ShardedJedisPipeline;
 import cn.ac.iie.jc.db.RedisUtil;
 import cn.ac.iie.jc.group.data.RTPosition;
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPipeline;
 
 public class RTPositionFileWriter {
 
@@ -21,7 +21,7 @@ public class RTPositionFileWriter {
 		this.cTableContents = cTableContents;
 	}
 
-	public void write(OutputStreamWriter writer) throws IOException {
+	public void write(OutputStreamWriter writer, OutputStreamWriter wholeWriter) throws IOException {
 
 		String para = "uliRedis";
 		ShardedJedis jedis = RedisUtil.getJedis(para);
@@ -35,6 +35,9 @@ public class RTPositionFileWriter {
 				continue;
 			RTPosition position = getRTPosition((String) cTableContent);
 			writer.write(position.toString() + "\n");
+			synchronized (wholeWriter) {
+				wholeWriter.write(position.toString() + "\n");
+			}
 		}
 
 	}
@@ -44,23 +47,30 @@ public class RTPositionFileWriter {
 		position.setImsi(((String) cTableContent).split(";")[0]);
 		position.setImei(((String) cTableContent).split(";")[1]);
 		position.setMsisdn(((String) cTableContent).split(";")[2]);
-		position.setTime(stringStampToDate(((String) cTableContent).split(";")[10]));
+		position.setRegionCode(((String) cTableContent).split(";")[3]);
+
+		if (((String) cTableContent).split(";").length > 10)
+			position.setTime(stringStampToDate(((String) cTableContent).split(";")[10]));
 
 		String uli = ((String) cTableContent).split(";")[6];
-		position.setProvinceId(uliMap.get(uli).split(",")[3]);
-		position.setProvinceName("testProvinceName");
-		position.setCityId(uliMap.get(uli).split(",")[4]);
-		position.setCityName("testCityName");
-		position.setAreaId(uliMap.get(uli).split(",")[5]);
-		position.setAreaName("testAreaName");
-		position.setAddress(uliMap.get(uli).split(",")[7]);
+		position.setUli(uli);
+		String gis = uliMap.get(uli);
+		if (gis != null && gis.split(",").length > 7) {
+			position.setLngi(Double.parseDouble((gis.split(",")[1])));
+			position.setLati(Double.parseDouble((gis.split(",")[2])));
+			position.setProvince(gis.split(",")[3]);
+			position.setCity(gis.split(",")[4]);
+			position.setDistrict(gis.split(",")[5]);
+			position.setBaseinfo(gis.split(",")[7]);
+			if (gis.split(",").length > 8)
+				position.setRegionCode(gis.split(",")[8]);
+		}
 
 		return position;
 
 	}
 
-	private void fetchUliAddress(List<Object> cTableContents,
-			ShardedJedisPipeline pipeline) {
+	private void fetchUliAddress(List<Object> cTableContents, ShardedJedisPipeline pipeline) {
 
 		for (Object cTableContent : cTableContents) {
 			if (cTableContent == null)
@@ -70,6 +80,8 @@ public class RTPositionFileWriter {
 		List<Object> resp = pipeline.syncAndReturnAll();
 
 		for (Object rs : resp) {
+			if (rs == null)
+				continue;
 			String uli = ((String) rs).split(",")[0];
 			uliMap.put(uli, (String) rs);
 		}
@@ -78,8 +90,7 @@ public class RTPositionFileWriter {
 	private static String stringStampToDate(String str) {
 
 		long stamp = Long.parseLong(str) * 1000;
-		SimpleDateFormat simpleDateFormat = new SimpleDateFormat(
-				"yyyy-MM-dd HH:mm:ss");
+		SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		Date date = new Date(stamp);
 		return simpleDateFormat.format(date);
 	}

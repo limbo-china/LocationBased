@@ -17,10 +17,13 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
-import redis.clients.jedis.ShardedJedis;
-import redis.clients.jedis.ShardedJedisPipeline;
-import redis.clients.jedis.exceptions.JedisConnectionException;
+import com.google.gson.Gson;
+import com.scistor.softcrypto.SoftCrypto;
+
+import cn.ac.iie.jc.query.config.ConfigUtil;
 import cn.ac.iie.jc.query.config.ProvinceRedisMap;
+import cn.ac.iie.jc.query.crypt.CryptData;
+import cn.ac.iie.jc.query.crypt.DataCrypt;
 import cn.ac.iie.jc.query.data.IndexToQuery;
 import cn.ac.iie.jc.query.data.JCGroup;
 import cn.ac.iie.jc.query.data.JCPerson;
@@ -28,19 +31,20 @@ import cn.ac.iie.jc.query.data.PersonResult;
 import cn.ac.iie.jc.query.data.QueryRequest;
 import cn.ac.iie.jc.query.db.RedisUtil;
 import cn.ac.iie.jc.query.log.LogUtil;
-
-import com.google.gson.Gson;
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPipeline;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 public class DataDetailQueryHandler extends AbstractHandler {
 
 	private static DataDetailQueryHandler dataHandler = null;
 
-	// private static SoftCrypto crypt = new SoftCrypto();
+	private static SoftCrypto crypt = new SoftCrypto();
 	private static ShardedJedis jedisuli = RedisUtil.getJedis("uliRedisIp");
 
-	// static {
-	// crypt.Initialize("abc");
-	// }
+	static {
+		crypt.Initialize("abc");
+	}
 
 	public DataDetailQueryHandler() {
 		super();
@@ -55,10 +59,8 @@ public class DataDetailQueryHandler extends AbstractHandler {
 	}
 
 	@Override
-	public void handle(String string, Request baseRequest,
-			HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse) throws IOException,
-			ServletException {
+	public void handle(String string, Request baseRequest, HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse) throws IOException, ServletException {
 
 		QueryRequest request = parseRequest(baseRequest, httpServletRequest);
 		HashMap<String, JCGroup> groupMap = fetchJCGroupConfig();
@@ -69,11 +71,9 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			getImsi(indexList);
 
 		HashMap<String, List<IndexToQuery>> provinceMap = getProvince(indexList);
-		HashMap<IndexToQuery, PersonResult> resultMap = initResultMap(
-				indexList, groupMap);
+		HashMap<IndexToQuery, PersonResult> resultMap = initResultMap(indexList, groupMap);
 
-		for (Map.Entry<String, List<IndexToQuery>> mapEntry : provinceMap
-				.entrySet()) {
+		for (Map.Entry<String, List<IndexToQuery>> mapEntry : provinceMap.entrySet()) {
 			String ipList = ProvinceRedisMap.getProRedisIP(mapEntry.getKey());
 			queryDetail(ipList, mapEntry.getValue(), resultMap, 1);
 		}
@@ -86,18 +86,15 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		httpServletResponse.getWriter().println(result);
 	}
 
-	private QueryRequest parseRequest(Request baseRequest,
-			HttpServletRequest httpServletRequest) {
+	private QueryRequest parseRequest(Request baseRequest, HttpServletRequest httpServletRequest) {
 
 		QueryRequest request = new QueryRequest();
 		request.setUrl(new String(httpServletRequest.getRequestURL()));
 		request.setToken(httpServletRequest.getParameter("token"));
-		request.setGroupId(httpServletRequest.getParameter("groupId"));
+		request.setGroupId(httpServletRequest.getParameter("groupid"));
 		request.setQueryType("msisdn");
-		request.setPageSize(Integer.parseInt(httpServletRequest
-				.getParameter("pagesize")));
-		request.setCurrentPage(Integer.parseInt(httpServletRequest
-				.getParameter("currentpage")));
+		request.setPageSize(Integer.parseInt(httpServletRequest.getParameter("pagesize")));
+		request.setCurrentPage(Integer.parseInt(httpServletRequest.getParameter("currentpage")));
 		request.setRemoteHost(baseRequest.getRemoteAddr());
 
 		LogUtil.info(request.toString());
@@ -108,11 +105,12 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		HashMap<String, JCGroup> groupMap = new HashMap<String, JCGroup>();
 
 		ShardedJedis jcRuleJedis = RedisUtil.getJedis("jcRuleIp");
-		Set<String> groupIds = jcRuleJedis.hkeys("JCGroup");
+		Set<String> groupIds = jcRuleJedis.hkeys(ConfigUtil.getString("provinceName") + "_JCGroup");
 
 		for (String groupId : groupIds) {
-			String rule = jcRuleJedis.hget("JCGroup", groupId);
+			String rule = jcRuleJedis.hget(ConfigUtil.getString("provinceName") + "_JCGroup", groupId);
 			JCGroup group = JCGroup.newInstanceFromJson(rule);
+			group.setGroupId(groupId);
 			groupMap.put(groupId, group);
 		}
 		RedisUtil.returnJedis(jcRuleJedis, "jcRuleIp");
@@ -132,7 +130,7 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		for (String value : values) {
 			JCPerson person = JCPerson.newInstanceFromJson(value);
 			IndexToQuery index = new IndexToQuery();
-			index.setGroupId(person.getGroupId());
+			index.setGroupId(request.getGroupId());
 			index.setMsisdn(person.getPhone());
 			indexList.add(index);
 		}
@@ -143,28 +141,28 @@ public class DataDetailQueryHandler extends AbstractHandler {
 
 	private void checkToken(QueryRequest request, List<IndexToQuery> indexList) {
 
-		HashMap<String, String> indexmap = new HashMap<String, String>();
+		// HashMap<String, String> indexmap = new HashMap<String, String>();
 		String token = request.getToken();
 		String queryType = request.getQueryType();
 
 		boolean isTokenExist = true;
 		ShardedJedis tokenJedis = RedisUtil.getJedis("redisTokenIp");
-		ShardedJedisPipeline pipeline = tokenJedis.pipelined();
+		// ShardedJedisPipeline pipeline = tokenJedis.pipelined();
 		if (token == null || token.isEmpty() || !tokenJedis.exists(token))
 			isTokenExist = false;
 
-		if (isTokenExist) {
-			for (IndexToQuery aIndex : indexList)
-				pipeline.hget(token, aIndex.getKeyByQueryType(queryType));
-		}
-		List<Object> resp = pipeline.syncAndReturnAll();
-
-		int count = 0;
-		Iterator<Object> iter = resp.iterator();
-		while (iter.hasNext()) {
-			indexmap.put(indexList.get(count++).getKeyByQueryType(queryType),
-					(String) iter.next());
-		}
+		// if (isTokenExist) {
+		// for (IndexToQuery aIndex : indexList)
+		// pipeline.hget(token, aIndex.getKeyByQueryType(queryType));
+		// }
+		// List<Object> resp = pipeline.syncAndReturnAll();
+		//
+		// int count = 0;
+		// Iterator<Object> iter = resp.iterator();
+		// while (iter.hasNext()) {
+		// indexmap.put(indexList.get(count++).getKeyByQueryType(queryType),
+		// (String) iter.next());
+		// }
 
 		RedisUtil.returnJedis(tokenJedis, "redisTokenIp");
 
@@ -177,17 +175,17 @@ public class DataDetailQueryHandler extends AbstractHandler {
 				aIndex.setStatus(2);
 				continue;
 			}
-			String out = indexmap.get(aIndex.getKeyByQueryType(queryType));
-			if (out == null) {
-				aIndex.setStatus(3);
-				continue;
-			}
-			if ((queryType.equals("msisdn") && !out.equals(aIndex.getMsisdn()))
-					|| (queryType.equals("imsi") && !out.equals(aIndex
-							.getImsi()))) {
-				aIndex.setStatus(1);
-				continue;
-			}
+			// String out = indexmap.get(aIndex.getKeyByQueryType(queryType));
+			// if (out == null) {
+			// aIndex.setStatus(3);
+			// continue;
+			// }
+			// if ((queryType.equals("msisdn") &&
+			// !out.equals(aIndex.getMsisdn()))
+			// || (queryType.equals("imsi") && !out.equals(aIndex.getImsi()))) {
+			// aIndex.setStatus(1);
+			// continue;
+			// }
 			aIndex.setStatus(0);
 		}
 	}
@@ -218,8 +216,7 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		}
 	}
 
-	private HashMap<String, List<IndexToQuery>> getProvince(
-			List<IndexToQuery> indexList) {
+	private HashMap<String, List<IndexToQuery>> getProvince(List<IndexToQuery> indexList) {
 		HashMap<String, List<IndexToQuery>> provinceMap = new HashMap<String, List<IndexToQuery>>();
 
 		ShardedJedis jedisCluster = RedisUtil.getJedis("redisList");
@@ -257,14 +254,16 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		return provinceMap;
 	}
 
-	private HashMap<IndexToQuery, PersonResult> initResultMap(
-			List<IndexToQuery> indexList, HashMap<String, JCGroup> groupMap) {
+	private HashMap<IndexToQuery, PersonResult> initResultMap(List<IndexToQuery> indexList,
+			HashMap<String, JCGroup> groupMap) {
 		HashMap<IndexToQuery, PersonResult> resultMap = new HashMap<IndexToQuery, PersonResult>();
 
 		for (IndexToQuery aIndex : indexList) {
 			PersonResult result = new PersonResult();
 			String groupId = aIndex.getGroupId();
 			JCGroup group = groupMap.get(groupId);
+			LogUtil.info(groupId);
+			LogUtil.info(groupMap.toString());
 			result.setGroupId(groupId);
 			result.setGourpName(group.getGroupName());
 			result.setSource(group.getSource());
@@ -277,13 +276,13 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		return resultMap;
 	}
 
-	private void queryDetail(String ipList, List<IndexToQuery> indexList,
-			HashMap<IndexToQuery, PersonResult> resultMap, int times) {
+	private void queryDetail(String ipList, List<IndexToQuery> indexList, HashMap<IndexToQuery, PersonResult> resultMap,
+			int times) {
 
 		if (times > 30)
 			return;
 		try {
-			if (ipList == null || ipList.startsWith("10.227")) {
+			if (ipList == null) {
 				for (IndexToQuery aIndex : indexList)
 					resultMap.get(aIndex).setStatus(7);
 				return;
@@ -299,18 +298,17 @@ public class DataDetailQueryHandler extends AbstractHandler {
 					LogUtil.error("error logic when query detail!!!!!!!!!!");
 					continue;
 				}
-				// if (ipList.startsWith("10.245") ||
-				// ipList.startsWith("10.233")) {
-				// if (imsi != null && imsi.length() == 15) {
-				// byte[] datain = imsi.substring(3, 15).getBytes();
-				// byte[] dataout = new byte[datain.length];
-				// int res = crypt.crypto_encrypt(datain, dataout,
-				// datain.length, 1, 0);
-				// String t = new String(dataout);
-				// imsi = imsi.substring(0, 3) + t;
-				// }
-				// }
-				pipeline.get(aIndex.getImsi());
+				String imsi = aIndex.getImsi();
+				if (ipList.startsWith("10.245") || ipList.startsWith("10.233")) {
+					if (imsi != null && imsi.length() == 15) {
+						byte[] datain = imsi.substring(3, 15).getBytes();
+						byte[] dataout = new byte[datain.length];
+						crypt.crypto_encrypt(datain, dataout, datain.length, 1, 0);
+						String t = new String(dataout);
+						imsi = imsi.substring(0, 3) + t;
+					}
+				}
+				pipeline.get(imsi);
 			}
 
 			List<Object> resp = pipeline.syncAndReturnAll();
@@ -342,32 +340,28 @@ public class DataDetailQueryHandler extends AbstractHandler {
 					continue;
 				}
 
-				// CryptData cd = new CryptData();
-				// cd.setImsi(v.split(";")[0]);
-				// cd.setImei(v.split(";")[1]);
-				// cd.setMsisdn(v.split(";")[2]);
-				//
-				// if (ipList.startsWith("10.245")
-				// || ipList.startsWith("10.233")) {
-				// int dedataout_result = 0;
-				//
-				// dedataout_result = cd.decryptData();
-				// while (-1 == dedataout_result) {
-				// LogUtil.info("Decrypt ticket time out!");
-				// try {
-				// DataCrypt.auth("jm.conf");
-				// } catch (IOException e) {
-				// e.printStackTrace();
-				// }
-				// dedataout_result = cd.decryptData();
-				// }
-				// }
-				// usqb.setImsi(cd.getImsi());
-				// usqb.setImei(cd.getImei());
-				// usqb.setMsisdn(cd.getMsisdn());
-				result.setImei(v.split(";")[1]);
+				CryptData cd = new CryptData();
+				cd.setImsi(v.split(";")[0]);
+				cd.setImei(v.split(";")[1]);
+				cd.setMsisdn(v.split(";")[2]);
+
+				if (ipList.startsWith("10.245") || ipList.startsWith("10.233")) {
+					int dedataout_result = 0;
+
+					dedataout_result = cd.decryptData();
+					while (-1 == dedataout_result) {
+						LogUtil.info("Decrypt ticket time out!");
+						try {
+							DataCrypt.auth("jm.conf");
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						dedataout_result = cd.decryptData();
+					}
+				}
+				result.setImei(cd.getImei());
 				if (result.getMsisdn().equals(""))
-					result.setMsisdn(v.split(";")[2]);
+					result.setMsisdn(cd.getMsisdn());
 				result.setRegionCode(v.split(";")[3]);
 				result.setLac(v.split(";")[4]);
 				result.setCi(v.split(";")[5]);
@@ -390,21 +384,18 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			}
 			RedisUtil.returnJedis(redisList, ipList);
 		} catch (JedisConnectionException e) {
-			LogUtil.info("connection to " + ipList
-					+ " failed! try reconnecting for " + times + " times");
+			LogUtil.info("connection to " + ipList + " failed! try reconnecting for " + times + " times");
 			times++;
 			queryDetail(ipList, indexList, resultMap, times);
 		} catch (Exception e) {
-			LogUtil.info("query details failed for " + e.getMessage()
-					+ " try requerying for " + times + " times");
+			LogUtil.info("query details failed for " + e.getMessage() + " try requerying for " + times + " times");
 			times++;
 			e.printStackTrace();
 			queryDetail(ipList, indexList, resultMap, times);
 		}
 	}
 
-	private String resultMapToJson(List<IndexToQuery> indexList,
-			HashMap<IndexToQuery, PersonResult> resultMap) {
+	private String resultMapToJson(List<IndexToQuery> indexList, HashMap<IndexToQuery, PersonResult> resultMap) {
 
 		List<PersonResult> results = new ArrayList<PersonResult>();
 		Gson gson = new Gson();
@@ -421,28 +412,5 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		}
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		return sdf.format(new Date(Long.valueOf(seconds + "000")));
-	}
-
-	private String getReason(int ret) {
-		switch (ret) {
-		case 0:
-			return "Right";
-		case 1:
-			return "服务器错误";
-		case 2:
-			return "请求参数非法";
-		case 3:
-			return "权限校验失败";
-		case 4:
-			return "配额不足";
-		case 5:
-			return "token不存在或非法";
-		case 6:
-			return "手机号映射缺失";
-		case 7:
-			return "查询结果为空";
-		default:
-			return "未知错误";
-		}
 	}
 }

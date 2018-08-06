@@ -1,5 +1,6 @@
 package cn.ac.iie.jc.group.task;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
@@ -9,13 +10,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.gson.Gson;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.InputStreamEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
 
+import cn.ac.iie.jc.avro.Serializing;
 import cn.ac.iie.jc.config.ConfigUtil;
 import cn.ac.iie.jc.config.ProvinceCityMap;
 import cn.ac.iie.jc.config.ProvinceRedisMap;
 import cn.ac.iie.jc.db.RedisUtil;
 import cn.ac.iie.jc.group.data.City;
+import cn.ac.iie.jc.group.data.CityPopulation;
 import cn.ac.iie.jc.group.data.Distribution;
 import cn.ac.iie.jc.group.data.Group;
 import cn.ac.iie.jc.group.data.ProvincePopulation;
@@ -108,8 +115,6 @@ public class DistributionExecutor implements Runnable {
 				rt.write(writer, wholeWriter);
 			}
 
-			// Gson gson = new Gson();
-			// writer.write(gson.toJson(distrib) + "\n");
 			writer.close();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -125,6 +130,9 @@ public class DistributionExecutor implements Runnable {
 		provPopulation.updateDayId();
 		provPopulation.updateUpdateTime();
 		provPopulation.updateVersion();
+
+		distrib.addProvincePopulation(provPopulation, false);
+		distrib0.addProvincePopulation(provPopulation, true);
 
 		for (Object rs : resp) {
 			if (rs == null)
@@ -145,8 +153,7 @@ public class DistributionExecutor implements Runnable {
 			City city = getCity(regionCode);
 			provPopulation.increCityPopulationByCity(city);
 		}
-		distrib.addProvincePopulation(provPopulation);
-		distrib0.addProvincePopulation(provPopulation);
+
 	}
 
 	private City getCity(String regionCode) {
@@ -163,18 +170,24 @@ public class DistributionExecutor implements Runnable {
 
 	private void writeToDB() {
 
-		LogUtil.info("writing group " + group.getGroupId() + " to db");
+		LogUtil.info("writing group " + group.getGroupId() + " to redis db");
 
 		ShardedJedis groupJedis = RedisUtil.getJedis("groupRedis");
 
 		groupJedis.hset("PopulationStatics", group.getGroupId(), distrib.getAggregate().toJson());
 
 		RedisUtil.returnJedis(groupJedis, "groupRedis");
+
+		LogUtil.info("writing group " + group.getGroupId() + " to st db");
+		for (Map.Entry<String, ProvincePopulation> entry : distrib.getProvinceDisribution().entrySet()) {
+			ProvincePopulation provincePopulation = entry.getValue();
+			sendProvData(provincePopulation);
+			for (Map.Entry<String, CityPopulation> cityentry : provincePopulation.getCityDistribution().entrySet())
+				sendCityData(cityentry.getValue());
+		}
 	}
 
 	public static void writeWholeToDB() {
-		Gson gson = new Gson();
-		LogUtil.info(gson.toJson(distrib0));
 		LogUtil.info("writing group " + group0.getGroupId() + " to db");
 
 		ShardedJedis groupJedis = RedisUtil.getJedis("groupRedis");
@@ -182,6 +195,74 @@ public class DistributionExecutor implements Runnable {
 		groupJedis.hset("PopulationStatics", group0.getGroupId(), distrib0.getAggregate().toJson());
 
 		RedisUtil.returnJedis(groupJedis, "groupRedis");
+
+		LogUtil.info("writing group " + group0.getGroupId() + " to st db");
+		for (Map.Entry<String, ProvincePopulation> entry : distrib0.getProvinceDisribution().entrySet()) {
+			ProvincePopulation provincePopulation = entry.getValue();
+			provincePopulation.setGroupId(group0.getGroupId());
+			sendProvData(provincePopulation);
+			for (Map.Entry<String, CityPopulation> cityentry : provincePopulation.getCityDistribution().entrySet()) {
+				cityentry.getValue().setGroupId(group0.getGroupId());
+				sendCityData(cityentry.getValue());
+			}
+		}
+	}
+
+	private static void sendProvData(ProvincePopulation popu) {
+		HttpClient httpClient = new DefaultHttpClient();
+		Serializing serialize = Serializing.getInstance();
+		try {
+			byte[] data = serialize.serializeProvPopuToBytes(popu);
+			if (data != null) {
+				HttpPost httppost = new HttpPost(ConfigUtil.getString("loadUrl"));
+				httppost.addHeader("content-type", "utf-8");
+				httppost.addHeader("User", "iie");
+				httppost.addHeader("Password", "123456");
+				httppost.addHeader("Topic", "monitor_statistics_t");
+				httppost.addHeader("Format", "avro");
+
+				InputStreamEntity reqEntity = new InputStreamEntity(new ByteArrayInputStream(data), data.length);
+				reqEntity.setContentType("binary/octet-stream");
+				httppost.setEntity(reqEntity);
+
+				HttpResponse response = httpClient.execute(httppost);
+				LogUtil.info("Prov" + "send " + popu.getGroupId() + " " + popu.getProvinceName() + " "
+						+ response.getStatusLine());
+				httppost.releaseConnection();
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		} finally {
+			httpClient.getConnectionManager().shutdown();
+		}
+	}
+
+	private static void sendCityData(CityPopulation popu) {
+		HttpClient httpClient = new DefaultHttpClient();
+		Serializing serialize = Serializing.getInstance();
+		try {
+			byte[] data = serialize.serializeCityPopuToBytes(popu);
+			if (data != null) {
+				HttpPost httppost = new HttpPost(ConfigUtil.getString("loadUrl"));
+				httppost.addHeader("content-type", "utf-8");
+				httppost.addHeader("User", "iie");
+				httppost.addHeader("Password", "123456");
+				httppost.addHeader("Topic", "monitor_statistics_city_t");
+				httppost.addHeader("Format", "avro");
+				InputStreamEntity reqEntity = new InputStreamEntity(new ByteArrayInputStream(data), data.length);
+				reqEntity.setContentType("binary/octet-stream");
+				httppost.setEntity(reqEntity);
+
+				HttpResponse response = httpClient.execute(httppost);
+				LogUtil.info("City" + "send " + popu.getGroupId() + " " + popu.getProvinceName() + " "
+						+ popu.getCityName() + " " + response.getStatusLine());
+				httppost.releaseConnection();
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		} finally {
+			httpClient.getConnectionManager().shutdown();
+		}
 	}
 
 	private static String stampToDate(long stamp) {

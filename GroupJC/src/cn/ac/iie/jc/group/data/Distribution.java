@@ -33,11 +33,17 @@ public class Distribution {
 		this.group = group;
 	}
 
+	public HashMap<String, ProvincePopulation> getProvinceDisribution() {
+		return provinceDisribution;
+	}
+
 	private synchronized boolean containProvince(String prov) {
 		return provinceDisribution.containsKey(prov);
 	}
 
-	public synchronized void addProvincePopulation(ProvincePopulation popu) {
+	public synchronized void addProvincePopulation(ProvincePopulation popu, boolean isWhole) {
+		if (!isWhole)
+			popu.setGroupId(group.getGroupId());
 		if (!containProvince(popu.getProvinceId()))
 			provinceDisribution.put(popu.getProvinceId(), popu);
 		else {

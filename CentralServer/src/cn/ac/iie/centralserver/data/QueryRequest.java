@@ -60,7 +60,7 @@ public class QueryRequest {
 	@Override
 	public String toString() {
 		return "QueryRequest [remoteHost=" + remoteHost + ", url=" + url + ", token=" + token + ", queryType="
-				+ queryType + ", indexCount=" + indexList.length + "]";
+				+ queryType + ", indexCount=" + indexList.length + ":" + indexList.toString() + "]";
 	}
 
 }

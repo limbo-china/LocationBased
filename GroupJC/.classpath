@@ -6,5 +6,15 @@
 	<classpathentry kind="lib" path="lib/log4j-1.2.14.jar"/>
 	<classpathentry kind="lib" path="lib/commons-pool2-2.2.jar"/>
 	<classpathentry kind="lib" path="lib/gson-2.3.1.jar"/>
+	<classpathentry kind="lib" path="lib/avro-1.7.4.jar"/>
+	<classpathentry kind="lib" path="lib/avro-tools-1.7.4.jar"/>
+	<classpathentry kind="lib" path="lib/httpclient-4.2.3.jar"/>
+	<classpathentry kind="lib" path="lib/httpclient-cache-4.2.3.jar"/>
+	<classpathentry kind="lib" path="lib/httpcore-4.2.2.jar"/>
+	<classpathentry kind="lib" path="lib/kafka-schema-registry-client-2.0.1.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-core-2.6.3.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-annotations-2.8.5.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-databind-2.6.5.jar"/>
+	<classpathentry kind="lib" path="lib/converter-0.1.7.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

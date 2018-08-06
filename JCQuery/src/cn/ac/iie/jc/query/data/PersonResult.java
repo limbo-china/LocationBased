@@ -21,6 +21,7 @@ public class PersonResult {
 	String city = "";
 	String district = "";
 	String baseinfo = "";
+	String reason = null;
 
 	public PersonResult() {
 	}
@@ -31,6 +32,7 @@ public class PersonResult {
 
 	public void setStatus(int status) {
 		this.status = status;
+		setReason(mapReason(status));
 	}
 
 	public String getSource() {
@@ -177,4 +179,34 @@ public class PersonResult {
 		this.baseinfo = baseinfo;
 	}
 
+	public String getReason() {
+		return reason;
+	}
+
+	private void setReason(String reason) {
+		this.reason = reason;
+	}
+
+	private String mapReason(int ret) {
+		switch (ret) {
+		case 0:
+			return null;
+		case 1:
+			return "服务器错误";
+		case 2:
+			return "请求参数非法";
+		case 3:
+			return "权限校验失败";
+		case 4:
+			return "配额不足";
+		case 5:
+			return "token不存在或非法";
+		case 6:
+			return "手机号映射缺失";
+		case 7:
+			return "查询结果为空";
+		default:
+			return "未知错误";
+		}
+	}
 }

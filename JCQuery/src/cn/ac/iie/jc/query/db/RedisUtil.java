@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import cn.ac.iie.jc.query.config.ConfigUtil;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPool;
-import cn.ac.iie.jc.query.config.ConfigUtil;
 
 public class RedisUtil {
 
@@ -34,14 +34,13 @@ public class RedisUtil {
 
 		if (jedisPoolMap.get(para) == null) {
 			List<JedisShardInfo> infoList = getInfoList(para);
-			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig,
-					infoList);
+			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig, infoList);
 			jedisPoolMap.put(para, jedisPool);
 		}
 		return getResource(para);
 	}
 
-	public static ShardedJedis getJedisByIpList(String ipList) {
+	public synchronized static ShardedJedis getJedisByIpList(String ipList) {
 		List<JedisShardInfo> infoList = new ArrayList<JedisShardInfo>();
 
 		String[] hosts = ipList.split(" ");
@@ -51,8 +50,7 @@ public class RedisUtil {
 				int port = Integer.parseInt(hostPair.split(":")[1]);
 				infoList.add(new JedisShardInfo(ip, port));
 			}
-			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig,
-					infoList);
+			ShardedJedisPool jedisPool = new ShardedJedisPool(poolConfig, infoList);
 			jedisPoolMap.put(ipList, jedisPool);
 		}
 		if (jedisPoolMap.get(ipList) != null)

@@ -3,71 +3,108 @@ package cn.ac.iie.jc.group.data;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import com.google.gson.Gson;
+
+import cn.ac.iie.jc.config.VersionConfig;
+
 public class CityPopulation {
 
-	private String cityId;
-	private String cityName;
-	private int count = 0;
-	private String dayId;
-	private int version = 0;
-	private long updateTime;
+	private String c_groupid;
+	private String c_provinceid;
+	private String c_provincename;
+	private String c_cityid;
+	private String c_cityname;
+	private int c_count = 0;
+	private String c_dayid;
+	private int c_version = 0;
+	private long c_updatetime;
+	private static long update = System.currentTimeMillis() / 1000;
+
+	public String getGroupId() {
+		return c_groupid;
+	}
+
+	public void setGroupId(String groupId) {
+		this.c_groupid = groupId;
+	}
+
+	public String getProvinceId() {
+		return c_provinceid;
+	}
+
+	public void setProvinceId(String provinceId) {
+		this.c_provinceid = provinceId;
+	}
+
+	public String getProvinceName() {
+		return c_provincename;
+	}
+
+	public void setProvinceName(String provinceName) {
+		this.c_provincename = provinceName;
+	}
 
 	public String getCityId() {
-		return cityId;
+		return c_cityid;
 	}
 
 	public void setCityId(String cityId) {
-		this.cityId = cityId;
+		this.c_cityid = cityId;
 	}
 
 	public String getCityName() {
-		return cityName;
+		return c_cityname;
 	}
 
 	public void setCityName(String cityName) {
-		this.cityName = cityName;
+		this.c_cityname = cityName;
 	}
 
 	public int getCount() {
-		return count;
+		return c_count;
 	}
 
 	public void increCount() {
-		this.count++;
+		this.c_count++;
 	}
 
 	public void increCountByN(int n) {
-		this.count = this.count + n;
+		this.c_count = this.c_count + n;
 	}
 
 	public String getDayId() {
-		return dayId;
+		return c_dayid;
 	}
 
 	public void updateDayId() {
-		this.dayId = stampToDate(System.currentTimeMillis());
+		this.c_dayid = stampToDate(System.currentTimeMillis());
 	}
 
 	public int getVersion() {
-		return version;
+		return c_version;
 	}
 
 	public void updateVersion() {
-		this.version++;
+		this.c_version = VersionConfig.getInt("cityVersion");
 	}
 
 	public long getUpdateTime() {
-		return updateTime;
+		return c_updatetime;
 	}
 
 	public void updateUpdateTime() {
-		this.updateTime = System.currentTimeMillis() / 1000;
+		this.c_updatetime = update;
 	}
 
 	private static String stampToDate(long stamp) {
 
-		SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+		SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd");
 		Date date = new Date(stamp);
 		return simpleDateFormat.format(date);
+	}
+
+	public String toJson() {
+		Gson gson = new Gson();
+		return gson.toJson(this);
 	}
 }

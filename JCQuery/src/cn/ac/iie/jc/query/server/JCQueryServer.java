@@ -13,6 +13,7 @@ import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import cn.ac.iie.jc.query.config.ConfigUtil;
+import cn.ac.iie.jc.query.crypt.DataCrypt;
 import cn.ac.iie.jc.query.handler.DataDetailQueryHandler;
 import cn.ac.iie.jc.query.log.LogUtil;
 
@@ -33,8 +34,7 @@ public class JCQueryServer {
 			init();
 			startup();
 		} catch (Exception ex) {
-			LogUtil.error("starting data pro server is failed for "
-					+ ex.getMessage());
+			LogUtil.error("starting data pro server is failed for " + ex.getMessage());
 		}
 
 		System.exit(0);
@@ -53,10 +53,9 @@ public class JCQueryServer {
 
 		int serverPort = ConfigUtil.getInt("jettyServerPort");
 
-		int serverThreadPoolSize = ConfigUtil
-				.getInt("jettyServerThreadPoolSize");
+		int serverThreadPoolSize = ConfigUtil.getInt("jettyServerThreadPoolSize");
 
-		// DataCrypt.auth("jm.conf");
+		DataCrypt.auth("jm.conf");
 
 		server = new Server();
 		server.setThreadPool(new QueuedThreadPool(serverThreadPoolSize));
@@ -69,10 +68,8 @@ public class JCQueryServer {
 		cf.setKeyManagerPassword("123456");
 		server.addConnector(ssl_connector);
 
-		ContextHandler dataDetailQueryContext = new ContextHandler(
-				"/detailquery");
-		DataDetailQueryHandler dataDetailQueryHandler = DataDetailQueryHandler
-				.getHandler();
+		ContextHandler dataDetailQueryContext = new ContextHandler("/detailquery");
+		DataDetailQueryHandler dataDetailQueryHandler = DataDetailQueryHandler.getHandler();
 		if (dataDetailQueryHandler == null) {
 			throw new Exception("initializing dataDetailQueryHandler failed");
 		}

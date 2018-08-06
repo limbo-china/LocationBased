@@ -73,8 +73,8 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			queryDetail(ipList, mapEntry.getValue(), resultMap, 1);
 		}
 
-		String result = resultMapToJson(indexList, resultMap);
-
+		// String result = resultMapToJsonHJ(indexList, resultMap);//JSON串返回
+		String result = resultMapToJson(indexList, resultMap);// JSON字符数组
 		httpServletResponse.setContentType("text/json;charset=utf-8");
 		httpServletResponse.setStatus(HttpServletResponse.SC_OK);
 		baseRequest.setHandled(true);
@@ -376,6 +376,29 @@ public class DataDetailQueryHandler extends AbstractHandler {
 
 		LogUtil.info(okCount + " results queried successfully. " + errCount + " queries failed.");
 		return gson.toJson(results);
+	}
+
+	private String resultMapToJsonHJ(List<IndexToQuery> indexList, HashMap<IndexToQuery, PersonResult> resultMap) {
+
+		String results = "";
+		Gson gson = new Gson();
+
+		int okCount = 0;
+		int errCount = 0;
+		for (IndexToQuery aIndex : indexList) {
+			if (aIndex.getStatus() == 0)
+				okCount++;
+			else
+				errCount++;
+			results = results + gson.toJson(resultMap.get(aIndex)) + '\n';
+
+		}
+
+		return results;
+
+		// LogUtil.info(okCount + " results queried successfully. " + errCount +
+		// " queries failed.");
+
 	}
 
 	private String timeStamp2Date(String seconds) {

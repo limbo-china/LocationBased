@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 
 public class JCPerson {
 
-	private String groupId;
 	private String phone;
 	private String createBy;
 	private String createTime;
@@ -12,14 +11,6 @@ public class JCPerson {
 	private String updateTime;
 
 	private JCPerson() {
-	}
-
-	public String getGroupId() {
-		return groupId;
-	}
-
-	public void setGroupId(String groupId) {
-		this.groupId = groupId;
 	}
 
 	public String getPhone() {
@@ -64,9 +55,8 @@ public class JCPerson {
 
 	@Override
 	public String toString() {
-		return "JCPerson [groupId=" + groupId + ", phone=" + phone
-				+ ", createBy=" + createBy + ", createTime=" + createTime
-				+ ", updateBy=" + updateBy + ", updateTime=" + updateTime + "]";
+		return "JCPerson [phone=" + phone + ", createBy=" + createBy + ", createTime=" + createTime + ", updateBy="
+				+ updateBy + ", updateTime=" + updateTime + "]";
 	}
 
 	public static JCPerson newInstanceFromJson(String json) {

@@ -40,7 +40,7 @@ public class RedisUtil {
 		return getResource(para);
 	}
 
-	public static ShardedJedis getJedisByIpList(String ipList) {
+	public synchronized static ShardedJedis getJedisByIpList(String ipList) {
 		List<JedisShardInfo> infoList = new ArrayList<JedisShardInfo>();
 
 		String[] hosts = ipList.split(" ");

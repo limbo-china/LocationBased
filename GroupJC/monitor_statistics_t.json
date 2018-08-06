@@ -1,0 +1,38 @@
+{
+	"protocol": "monitor_statistics_t",
+    "types": [
+        {
+		"type":"record",
+		"name":"monitor_statistics_t",
+		"fields":[
+			{
+				"name":"groupid",
+				"type":"string"
+			},
+			{
+				"name":"provinceid",
+				"type":"string"
+			},
+			{
+				"name":"provincename",
+				"type":"string"
+			},
+			{
+				"name":"count",
+				"type":"int"
+			},
+			{
+				"name":"dayid",
+				"type":"string"
+			},
+			{
+				"name":"version",
+				"type":"int"
+			},
+			{
+				"name":"updatetime",
+				"type":"string"
+			}
+		]
+		}]
+}

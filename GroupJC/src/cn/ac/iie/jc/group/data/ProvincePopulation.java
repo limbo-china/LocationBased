@@ -88,10 +88,23 @@ public class ProvincePopulation {
 	}
 
 	public void increCityPopulationByCity(City city) {
-		if (city.getCityName() == null)
-			return;
 		String cityId = city.getCityId();
-		if (cityDistribution.get(cityId) == null) {
+		if (cityId.length() != 6) {
+			if (cityDistribution.get("000000") == null) {
+				CityPopulation popu = new CityPopulation();
+				popu.setGroupId(c_groupid);
+				popu.setProvinceId(c_provinceid);
+				popu.setProvinceName(c_provincename);
+				popu.setCityId("000000");
+				popu.setCityName("未知");
+				popu.updateDayId();
+				popu.updateUpdateTime();
+				popu.updateVersion();
+				popu.increCount();
+				cityDistribution.put("000000", popu);
+			} else
+				cityDistribution.get("000000").increCount();
+		} else if (cityDistribution.get(cityId) == null) {
 			CityPopulation popu = new CityPopulation();
 			popu.setGroupId(c_groupid);
 			popu.setProvinceId(c_provinceid);

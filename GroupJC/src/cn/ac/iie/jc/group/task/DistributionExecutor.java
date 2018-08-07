@@ -16,6 +16,8 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 
+import com.scistor.softcrypto.SoftCrypto;
+
 import cn.ac.iie.jc.avro.Serializing;
 import cn.ac.iie.jc.config.ConfigUtil;
 import cn.ac.iie.jc.config.ProvinceCityMap;
@@ -31,6 +33,12 @@ import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPipeline;
 
 public class DistributionExecutor implements Runnable {
+
+	private static SoftCrypto crypt = new SoftCrypto();
+
+	static {
+		crypt.Initialize("abc");
+	}
 
 	private static Group group0 = new Group(ConfigUtil.getString("provinceName") + "_0000000000");
 	private static Distribution distrib0 = new Distribution(group0);
@@ -104,8 +112,19 @@ public class DistributionExecutor implements Runnable {
 					continue;
 				ShardedJedis provJedis = RedisUtil.getJedisByIpList(ipList);
 				ShardedJedisPipeline provPipeline = provJedis.pipelined();
-				for (String imsi : entry.getValue())
+
+				for (String imsi : entry.getValue()) {
+					if (ipList.startsWith("10.245") || ipList.startsWith("10.233")) {
+						if (imsi != null && imsi.length() == 15) {
+							byte[] datain = imsi.substring(3, 15).getBytes();
+							byte[] dataout = new byte[datain.length];
+							crypt.crypto_encrypt(datain, dataout, datain.length, 1, 0);
+							String t = new String(dataout);
+							imsi = imsi.substring(0, 3) + t;
+						}
+					}
 					provPipeline.get(imsi);
+				}
 
 				List<Object> provResp = provPipeline.syncAndReturnAll();
 				RedisUtil.returnJedis(provJedis, ipList);
@@ -123,6 +142,8 @@ public class DistributionExecutor implements Runnable {
 
 	private void updateDistribution(String prov, List<Object> resp) {
 
+		ShardedJedis jedis = RedisUtil.getJedis("uliRedis");
+
 		ProvincePopulation provPopulation = new ProvincePopulation();
 		String provId = prov + "0000";
 		provPopulation.setProvinceId(provId);
@@ -132,7 +153,6 @@ public class DistributionExecutor implements Runnable {
 		provPopulation.updateVersion();
 
 		distrib.addProvincePopulation(provPopulation, false);
-		distrib0.addProvincePopulation(provPopulation, true);
 
 		for (Object rs : resp) {
 			if (rs == null)
@@ -150,21 +170,40 @@ public class DistributionExecutor implements Runnable {
 
 			String value = (String) rs;
 			String regionCode = value.split(";")[3];
-			City city = getCity(regionCode);
+			String uli = value.split(";")[6];
+			City city = getCity(regionCode, uli, jedis);
 			provPopulation.increCityPopulationByCity(city);
 		}
 
+		distrib0.addProvincePopulation(provPopulation, true);
+
+		RedisUtil.returnJedis(jedis, "uliRedis");
 	}
 
-	private City getCity(String regionCode) {
+	private City getCity(String regionCode, String uli, ShardedJedis jedis) {
 		City city = new City();
-		String cityId = regionCode;
-		if (regionCode.length() != 6)
+		if (uli == null || uli.equals(""))
+			city.setCityId(regionCode);
+		else {
+			String value = (String) jedis.get(uli);
+			if (value == null || value.split(",").length <= 8)
+				city.setCityId(regionCode);
+			else
+				city.setCityId(value.split(",")[8]);
+		}
+
+		if (city.getCityId().length() != 6)
 			return city;
+
+		String cityId = city.getCityId();
 		if (ProvinceCityMap.getProvCity(cityId) == null)
 			cityId = cityId.substring(0, 4) + "00";
 		city.setCityId(cityId);
-		city.setCityName(ProvinceCityMap.getProvCity(cityId));
+		String cityName = ProvinceCityMap.getProvCity(cityId);
+		if (cityName == null)
+			city.setCityId("0");
+		else
+			city.setCityName(cityName);
 		return city;
 	}
 

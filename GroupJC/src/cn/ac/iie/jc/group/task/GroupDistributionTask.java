@@ -1,5 +1,6 @@
 package cn.ac.iie.jc.group.task;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.Set;
 
 import cn.ac.iie.jc.config.ConfigUtil;
 import cn.ac.iie.jc.db.RedisUtil;
+import cn.ac.iie.jc.group.crypt.DataCrypt;
 import cn.ac.iie.jc.group.data.Group;
 import cn.ac.iie.jc.group.data.JCPerson;
 import cn.ac.iie.jc.thread.ThreadPoolManager;
@@ -68,6 +70,12 @@ public class GroupDistributionTask {
 	}
 
 	public static void main(String[] args) {
+		try {
+			DataCrypt.auth("jm.conf");
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+
 		GroupDistributionTask task = new GroupDistributionTask();
 		task.exec();
 

@@ -23,8 +23,10 @@ public class VersionConfig {
 	private static void loadFile(String filename) {
 		try {
 			prop.load(new FileInputStream(filename));
-			for (Object key : prop.keySet())
-				versionMap.put((String) key, Integer.parseInt(prop.getProperty((String) key)) + 1);
+			for (Object key : prop.keySet()) {
+				int version = Integer.parseInt(prop.getProperty((String) key)) + 1;
+				versionMap.put((String) key, (version > 24) ? 0 : version);
+			}
 		} catch (Exception e) {
 			LogUtil.error("load config file failed for [" + e.getMessage() + "]!");
 		}

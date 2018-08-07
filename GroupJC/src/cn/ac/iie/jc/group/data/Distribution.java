@@ -50,7 +50,7 @@ public class Distribution {
 			ProvincePopulation originPopu = provinceDisribution.get(popu.getProvinceId());
 			originPopu.increCountByN(popu.getCount());
 
-			for (Map.Entry<String, CityPopulation> entry : originPopu.getCityDistribution().entrySet())
+			for (Map.Entry<String, CityPopulation> entry : popu.getCityDistribution().entrySet())
 				originPopu.increCityPopulationByCityPopulation(entry.getValue());
 		}
 	}

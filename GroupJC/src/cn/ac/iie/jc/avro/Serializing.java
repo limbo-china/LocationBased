@@ -13,6 +13,8 @@ import org.apache.avro.io.EncoderFactory;
 import cn.ac.iie.jc.config.ConfigUtil;
 import cn.ac.iie.jc.group.data.CityPopulation;
 import cn.ac.iie.jc.group.data.ProvincePopulation;
+import cn.ac.iie.jc.group.data.RTPosition;
+import cn.ac.iie.jc.log.LogUtil;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import tech.allegro.schema.json2avro.converter.JsonAvroConverter;
@@ -21,8 +23,10 @@ public class Serializing {
 
 	private static Schema provinceSchema = null;
 	private static Schema citySchema = null;
+	private static Schema positionSchema = null;
 	private static DatumWriter<GenericRecord> provinceWriter = null;
 	private static DatumWriter<GenericRecord> cityWriter = null;
+	private static DatumWriter<GenericRecord> positionWriter = null;
 	private static final Serializing INSTANCE = new Serializing();
 
 	private JsonAvroConverter converter = new JsonAvroConverter();
@@ -35,9 +39,13 @@ public class Serializing {
 			provinceSchema = new Schema.Parser().parse(prov.getSchema());
 			SchemaMetadata city = client.getLatestSchemaMetadata(ConfigUtil.getString("cityTopicName"));
 			citySchema = new Schema.Parser().parse(city.getSchema());
+			SchemaMetadata position = client.getLatestSchemaMetadata(ConfigUtil.getString("positionTopicName"));
+			positionSchema = new Schema.Parser().parse(position.getSchema());
+			LogUtil.info(positionSchema.toString());
 
 			provinceWriter = new GenericDatumWriter<GenericRecord>(provinceSchema);
 			cityWriter = new GenericDatumWriter<GenericRecord>(citySchema);
+			positionWriter = new GenericDatumWriter<GenericRecord>(positionSchema);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -74,5 +82,18 @@ public class Serializing {
 
 	private GenericRecord cityToGenericRecord(CityPopulation popu) {
 		return converter.convertToGenericDataRecord(popu.toJson().getBytes(), citySchema);
+	}
+
+	public byte[] serializeRTPositionToBytes(RTPosition position) throws IOException {
+		ByteArrayOutputStream contentOutput = new ByteArrayOutputStream();
+		BinaryEncoder contentEncoder = new EncoderFactory().binaryEncoder(contentOutput, null);
+		positionWriter.write(positionToGenericRecord(position), contentEncoder);
+		contentEncoder.flush();
+
+		return contentOutput.toByteArray();
+	}
+
+	private GenericRecord positionToGenericRecord(RTPosition position) {
+		return converter.convertToGenericDataRecord(position.toJson().getBytes(), positionSchema);
 	}
 }

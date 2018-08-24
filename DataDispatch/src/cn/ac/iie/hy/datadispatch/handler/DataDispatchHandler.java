@@ -23,6 +23,7 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
 import org.apache.avro.Protocol;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericArray;
@@ -241,7 +242,8 @@ public class DataDispatchHandler extends AbstractHandler {
 						smd.setLngi(0.0);
 						smd.setLati(0.0);
 						smd.setTimestamp(Long.valueOf(record.get("timestamp").toString()));
-
+						String sub = smd.getRegionCode().substring(0, 2);
+					//	System.out.println("!!!!!!!!receive:"+record.get("msisdn").toString()+" "+record.get("timestamp").toString()+" region:"+sub);
 //						int dedataout_result = 0;
 //						int count = 0;
 //						

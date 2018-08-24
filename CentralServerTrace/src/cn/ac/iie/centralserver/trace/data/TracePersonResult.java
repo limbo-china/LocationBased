@@ -59,6 +59,8 @@ public class TracePersonResult implements Serializable {
 			return "手机号映射缺失";
 		case 7:
 			return "查询结果为空";
+		case 8:
+			return "位置未知";
 		default:
 			return "未知错误";
 		}

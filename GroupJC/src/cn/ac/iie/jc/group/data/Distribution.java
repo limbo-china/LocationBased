@@ -44,9 +44,12 @@ public class Distribution {
 	public synchronized void addProvincePopulation(ProvincePopulation popu, boolean isWhole) {
 		if (!isWhole)
 			popu.setGroupId(group.getGroupId());
-		if (!containProvince(popu.getProvinceId()))
-			provinceDisribution.put(popu.getProvinceId(), popu);
-		else {
+		if (!containProvince(popu.getProvinceId())) {
+			if (!isWhole)
+				provinceDisribution.put(popu.getProvinceId(), popu);
+			else
+				provinceDisribution.put(popu.getProvinceId(), popu.clone());
+		} else {
 			ProvincePopulation originPopu = provinceDisribution.get(popu.getProvinceId());
 			originPopu.increCountByN(popu.getCount());
 

@@ -64,6 +64,10 @@ public class CityPopulation {
 		return c_count;
 	}
 
+	public void setCount(int count) {
+		this.c_count = count;
+	}
+
 	public void increCount() {
 		this.c_count++;
 	}
@@ -94,6 +98,20 @@ public class CityPopulation {
 
 	public void updateUpdateTime() {
 		this.c_updatetime = update;
+	}
+
+	public CityPopulation clone() {
+		CityPopulation popu = new CityPopulation();
+		popu.setGroupId(this.getGroupId());
+		popu.setProvinceId(this.getProvinceId());
+		popu.setProvinceName(this.getProvinceName());
+		popu.setCityId(this.getCityId());
+		popu.setCityName(this.getCityName());
+		popu.setCount(this.getCount());
+		popu.updateDayId();
+		popu.updateUpdateTime();
+		popu.updateVersion();
+		return popu;
 	}
 
 	private static String stampToDate(long stamp) {

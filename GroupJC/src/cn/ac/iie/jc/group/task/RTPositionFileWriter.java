@@ -21,7 +21,8 @@ public class RTPositionFileWriter {
 		this.cTableContents = cTableContents;
 	}
 
-	public void write(OutputStreamWriter writer, OutputStreamWriter wholeWriter) throws IOException {
+	public void write(
+			OutputStreamWriter writer/* , OutputStreamWriter wholeWriter */) throws IOException {
 
 		String para = "uliRedis";
 		ShardedJedis jedis = RedisUtil.getJedis(para);
@@ -34,10 +35,10 @@ public class RTPositionFileWriter {
 			if (cTableContent == null)
 				continue;
 			RTPosition position = getRTPosition((String) cTableContent);
-			writer.write(position.toString() + "\n");
-			synchronized (wholeWriter) {
-				wholeWriter.write(position.toString() + "\n");
-			}
+			writer.write(position.toFileString() + "\n");
+			// synchronized (wholeWriter) {
+			// wholeWriter.write(position.toString() + "\n");
+			// }
 		}
 
 	}

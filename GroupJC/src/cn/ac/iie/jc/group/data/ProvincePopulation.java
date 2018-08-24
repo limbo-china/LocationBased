@@ -3,6 +3,7 @@ package cn.ac.iie.jc.group.data;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 
 import com.google.gson.ExclusionStrategy;
 import com.google.gson.FieldAttributes;
@@ -51,6 +52,10 @@ public class ProvincePopulation {
 		return c_count;
 	}
 
+	public void setCount(int count) {
+		this.c_count = count;
+	}
+
 	public void increCount() {
 		this.c_count++;
 	}
@@ -89,7 +94,8 @@ public class ProvincePopulation {
 
 	public void increCityPopulationByCity(City city) {
 		String cityId = city.getCityId();
-		if (cityId.length() != 6) {
+		if (cityId.length() != 6
+				|| (cityId.length() == 6 && !(cityId.substring(0, 2).equals(c_provinceid.substring(0, 2))))) {
 			if (cityDistribution.get("000000") == null) {
 				CityPopulation popu = new CityPopulation();
 				popu.setGroupId(c_groupid);
@@ -134,6 +140,21 @@ public class ProvincePopulation {
 		SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd");
 		Date date = new Date(stamp);
 		return simpleDateFormat.format(date);
+	}
+
+	public ProvincePopulation clone() {
+		ProvincePopulation popu = new ProvincePopulation();
+		popu.setGroupId(this.getGroupId());
+		popu.setProvinceId(this.getProvinceId());
+		popu.setProvinceName(this.getProvinceName());
+		popu.setCount(this.getCount());
+		popu.updateDayId();
+		popu.updateUpdateTime();
+		popu.updateVersion();
+		for (Map.Entry<String, CityPopulation> entry : cityDistribution.entrySet())
+			popu.getCityDistribution().put(entry.getKey(), entry.getValue().clone());
+
+		return popu;
 	}
 
 	public String toDBJson() {

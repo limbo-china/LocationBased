@@ -178,6 +178,10 @@ public class PersonResult {
 			return "手机号映射缺失";
 		case 7:
 			return "查询结果为空";
+		case 8:
+			return "位置缺失";
+		case 9:
+			return "uli位置未上报";
 		default:
 			return "未知错误";
 		}

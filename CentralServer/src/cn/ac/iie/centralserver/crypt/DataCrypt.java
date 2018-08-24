@@ -41,7 +41,7 @@ public class DataCrypt {
 
 	public static void auth(String confPath) throws IOException {
 
-		int ret, i;
+		int ret;
 		String str_pro_name = "liaoning";
 
 		Properties conf = new Properties();

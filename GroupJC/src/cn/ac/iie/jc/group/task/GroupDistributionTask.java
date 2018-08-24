@@ -1,8 +1,8 @@
 package cn.ac.iie.jc.group.task;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -11,7 +11,9 @@ import cn.ac.iie.jc.config.ConfigUtil;
 import cn.ac.iie.jc.db.RedisUtil;
 import cn.ac.iie.jc.group.crypt.DataCrypt;
 import cn.ac.iie.jc.group.data.Group;
+import cn.ac.iie.jc.group.data.IndexToQuery;
 import cn.ac.iie.jc.group.data.JCPerson;
+import cn.ac.iie.jc.group.data.RTPosition;
 import cn.ac.iie.jc.thread.ThreadPoolManager;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPipeline;
@@ -19,52 +21,81 @@ import redis.clients.jedis.ShardedJedisPipeline;
 public class GroupDistributionTask {
 
 	private static ThreadPoolManager threadPool = ThreadPoolManager.getInstance();
-	private HashMap<Group, List<String>> personListMap = new HashMap<Group, List<String>>();
+	private HashMap<Group, HashMap<IndexToQuery, RTPosition>> groupPositionMap = new HashMap<Group, HashMap<IndexToQuery, RTPosition>>();
 
 	public void exec() {
-		fetchJCPerson();
-		groupDistributionCount();
+		initGroupPositionMap();
+		groupDistribution();
 	}
 
-	private void fetchJCPerson() {
-		String para1 = "groupRedis";
-		String para2 = "msisdnRedis";
-		ShardedJedis groupJedis = RedisUtil.getJedis(para1);
-		Set<String> groupIds = groupJedis.hkeys(ConfigUtil.getString("provinceName") + "_JCGroup");
+	private void initGroupPositionMap() {
 
-		ShardedJedis msisdnJedis = RedisUtil.getJedis(para2);
+		ShardedJedis groupJedis = RedisUtil.getJedis("groupRedis");
+
+		Set<String> groupIds = groupJedis.hkeys(ConfigUtil.getString("provinceName") + "_JCGroup");
 
 		for (String groupId : groupIds) {
 			String rule = groupJedis.hget(ConfigUtil.getString("provinceName") + "_JCGroup", groupId);
 			Group group = Group.newFromJson(rule);
 			group.setGroupId(groupId);
 
-			List<String> personJsons = groupJedis.lrange(groupId, 0, -1);
-			List<String> imsis = new ArrayList<String>();
-			ShardedJedisPipeline msisdnPipeline = msisdnJedis.pipelined();
-			for (String personJson : personJsons) {
-				JCPerson person = JCPerson.newFromJson(personJson);
-				msisdnPipeline.get(person.getPhone());
-			}
-			List<Object> imsiResp = msisdnPipeline.syncAndReturnAll();
-
-			for (Object imsiRs : imsiResp) {
-				if (imsiRs == null)
-					continue;
-				imsis.add((String) imsiRs);
-			}
-			personListMap.put(group, imsis);
+			HashMap<IndexToQuery, RTPosition> positionMap = generatePositionMap(groupJedis, group);
+			groupPositionMap.put(group, positionMap);
 		}
-		RedisUtil.returnJedis(groupJedis, para1);
-		RedisUtil.returnJedis(msisdnJedis, para2);
+
+		RedisUtil.returnJedis(groupJedis, "groupRedis");
 	}
 
-	private void groupDistributionCount() {
+	private HashMap<IndexToQuery, RTPosition> generatePositionMap(ShardedJedis groupJedis, Group group) {
 
-		for (Map.Entry<Group, List<String>> entry : personListMap.entrySet()) {
+		ShardedJedis msisdnJedis = RedisUtil.getJedis("msisdnRedis");
+		ShardedJedisPipeline msisdnPipeline = msisdnJedis.pipelined();
+
+		List<String> personJsons = groupJedis.lrange(group.getGroupId(), 0, -1);
+
+		HashMap<IndexToQuery, RTPosition> positionMap = new HashMap<IndexToQuery, RTPosition>();
+
+		for (String personJson : personJsons) {
+			JCPerson person = JCPerson.newFromJson(personJson);
+			msisdnPipeline.get(person.getPhone());
+		}
+
+		List<Object> imsiResp = msisdnPipeline.syncAndReturnAll();
+
+		Iterator<Object> iter = imsiResp.iterator();
+		int count = 0;
+		while (iter.hasNext()) {
+			String personJson = personJsons.get(count++);
+			JCPerson person = JCPerson.newFromJson(personJson);
+			String msisdn = person.getPhone();
+			RTPosition position = new RTPosition();
+			position.setSource(group.getSource());
+			position.setGroupid(group.getGroupId());
+			position.setGroupname(group.getGroupName());
+			position.setMsisdn(msisdn);
+			
+			String value = (String) iter.next();
+			if (value == null) {
+				position.setStatus(6);
+				positionMap.put(new IndexToQuery(msisdn), position);
+				continue;
+			}
+			position.setImsi(value);
+			position.setStatus(0);
+			positionMap.put(new IndexToQuery(msisdn, value), position);
+		}
+
+		RedisUtil.returnJedis(msisdnJedis, "msisdnRedis");
+
+		return positionMap;
+	}
+
+	private void groupDistribution() {
+
+		for (Map.Entry<Group, HashMap<IndexToQuery, RTPosition>> entry : groupPositionMap.entrySet()) {
 			Group group = entry.getKey();
-			List<String> imsis = entry.getValue();
-			threadPool.addExecuteTask(new DistributionExecutor(group, imsis));
+			HashMap<IndexToQuery, RTPosition> resultMap = entry.getValue();
+			threadPool.addExecuteTask(new DistributionExecutor(group, resultMap));
 		}
 		threadPool.shutdown();
 	}

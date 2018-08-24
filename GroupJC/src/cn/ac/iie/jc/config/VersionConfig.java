@@ -3,6 +3,8 @@ package cn.ac.iie.jc.config;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -24,8 +26,8 @@ public class VersionConfig {
 		try {
 			prop.load(new FileInputStream(filename));
 			for (Object key : prop.keySet()) {
-				int version = Integer.parseInt(prop.getProperty((String) key)) + 1;
-				versionMap.put((String) key, (version > 24) ? 0 : version);
+				int version = Integer.parseInt(stampToDate(System.currentTimeMillis())) + 1;
+				versionMap.put((String) key, (version > 24) ? 1 : version);
 			}
 		} catch (Exception e) {
 			LogUtil.error("load config file failed for [" + e.getMessage() + "]!");
@@ -55,5 +57,11 @@ public class VersionConfig {
 			LogUtil.error("parameter [" + para + "] cannot be parsed into Int!");
 		}
 		return res;
+	}
+	private static String stampToDate(long stamp) {
+
+		SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH");
+		Date date = new Date(stamp);
+		return simpleDateFormat.format(date);
 	}
 }

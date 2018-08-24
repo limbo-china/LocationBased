@@ -1,5 +1,7 @@
 package cn.ac.iie.centralserver.data;
 
+import java.util.Arrays;
+
 public class QueryRequest {
 
 	private String remoteHost;
@@ -60,7 +62,7 @@ public class QueryRequest {
 	@Override
 	public String toString() {
 		return "QueryRequest [remoteHost=" + remoteHost + ", url=" + url + ", token=" + token + ", queryType="
-				+ queryType + ", indexCount=" + indexList.length + ":" + indexList.toString() + "]";
+				+ queryType + ", indexCount=" + indexList.length + ":" + Arrays.asList(indexList).toString() + "]";
 	}
 
 }

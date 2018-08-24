@@ -164,6 +164,7 @@ public class DataDetailQueryHandler extends AbstractHandler {
 
 	private void getImsi(List<IndexToQuery> indexList) {
 		ShardedJedis jedis = RedisUtil.getJedis("redisMapIp");
+		ShardedJedis ibsJedis = RedisUtil.getJedis("redisMapIpIBS");
 		ShardedJedisPipeline pipeline = jedis.pipelined();
 
 		for (IndexToQuery aIndex : indexList)
@@ -180,12 +181,20 @@ public class DataDetailQueryHandler extends AbstractHandler {
 				aIndex = indexList.get(count++);
 
 			String imsi = (String) iter.next();
+			String imsiList = null;
 			if (imsi == null) {
-				aIndex.setStatus(6);
-				continue;
+				imsiList = ibsJedis.get(aIndex.getMsisdn());
+				if (imsiList == null) {
+					aIndex.setStatus(6);
+					continue;
+				} else {
+					aIndex.setImsi(imsiList.split(",")[0]);
+				}
 			} else
 				aIndex.setImsi(imsi);
 		}
+
+		RedisUtil.returnJedis(ibsJedis, "redisMapIpIBS");
 	}
 
 	private HashMap<String, List<IndexToQuery>> getProvince(List<IndexToQuery> indexList) {
@@ -333,16 +342,21 @@ public class DataDetailQueryHandler extends AbstractHandler {
 				result.setHomeCode(v.split(";")[7]);
 				result.setTime(timeStamp2Date(v.split(";")[10]));
 
-				String rawGPS = uliMap.get(v.split(";")[6]);
-				if (rawGPS != null) {
-					result.setLngi(Double.parseDouble(rawGPS.split(",")[1]));
-					result.setLati(Double.parseDouble(rawGPS.split(",")[2]));
-					result.setProvince(rawGPS.split(",")[3]);
-					result.setCity(rawGPS.split(",")[4]);
-					result.setDistrict(rawGPS.split(",")[5]);
-					result.setBaseinfo(rawGPS.split(",")[7]);
-					if (rawGPS.split(",").length > 8)
-						result.setRegionCode(rawGPS.split(",")[8]);
+				if (v.split(";")[6].equals("") || v.split(";")[6].equals("0") || v.split(";")[6] == null)
+					result.setStatus(8);
+				else {
+					String rawGPS = uliMap.get(v.split(";")[6]);
+					if (rawGPS != null) {
+						result.setLngi(Double.parseDouble(rawGPS.split(",")[1]));
+						result.setLati(Double.parseDouble(rawGPS.split(",")[2]));
+						result.setProvince(rawGPS.split(",")[3]);
+						result.setCity(rawGPS.split(",")[4]);
+						result.setDistrict(rawGPS.split(",")[5]);
+						result.setBaseinfo(rawGPS.split(",")[7]);
+						if (rawGPS.split(",").length > 8)
+							result.setRegionCode(rawGPS.split(",")[8]);
+					} else
+						result.setStatus(9);
 				}
 
 			}

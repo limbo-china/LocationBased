@@ -1,10 +1,18 @@
-package cn.ac.iie.centralserver.data;
+package cn.ac.iie.jc.group.data;
 
 public class IndexToQuery {
 
 	private String imsi = "";
 	private String msisdn = "";
-	private int status = -1;
+
+	public IndexToQuery(String msisdn) {
+		this.msisdn = msisdn;
+	}
+
+	public IndexToQuery(String msisdn, String imsi) {
+		this.msisdn = msisdn;
+		this.imsi = imsi;
+	}
 
 	public String getImsi() {
 		return imsi;
@@ -20,22 +28,6 @@ public class IndexToQuery {
 
 	public void setMsisdn(String msisdn) {
 		this.msisdn = msisdn;
-	}
-
-	public int getStatus() {
-		return status;
-	}
-
-	public void setStatus(int status) {
-		this.status = status;
-	}
-
-	public String getKeyByQueryType(String queryType) {
-		return queryType.equals("msisdn") ? msisdn : imsi;
-	}
-
-	public boolean isSuccess() {
-		return status == 0;
 	}
 
 	@Override
@@ -59,6 +51,11 @@ public class IndexToQuery {
 		else
 			result = 31 * result + msisdn.hashCode();
 		return result;
+	}
+
+	@Override
+	public String toString() {
+		return "IndexToQuery [imsi=" + imsi + ", msisdn=" + msisdn + "]";
 	}
 
 }

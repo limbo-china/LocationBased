@@ -13,9 +13,11 @@ import org.apache.log4j.PropertyConfigurator;
 import cn.ac.iie.datadispatch.rabbit.DataFactory;
 import cn.ac.iie.datadispatch.rabbit.RabbitServiceTask;
 import cn.ac.iie.hy.datadispatch.crypt.DataCrypt;
+import cn.ac.iie.hy.datadispatch.metadata.RTPGJData;
 import cn.ac.iie.hy.datadispatch.metadata.RoamData;
 import cn.ac.iie.hy.datadispatch.metadata.SMetaData;
 import cn.ac.iie.hy.datadispatch.server.DataDispatchServer;
+import cn.ac.iie.hy.datadispatch.task.DBGJTask;
 import cn.ac.iie.hy.datadispatch.task.DBLoadTask;
 import cn.ac.iie.hy.datadispatch.task.DBUpdateTask;
 import cn.ac.iie.hy.datadispatch.task.ThreadPoolManager;
@@ -78,6 +80,10 @@ public class DataDispatcher {
 	
 	public static void runLoadTask(List<String> al){
 		threadpool2.addExecuteTask(new DBLoadTask(al));
+	}
+	
+	public static void runGJTask(List<Object> al){
+		threadpool2.addExecuteTask(new DBGJTask(al));
 	}
 	
 	public static void runRabbitTask(List<RoamData> al){

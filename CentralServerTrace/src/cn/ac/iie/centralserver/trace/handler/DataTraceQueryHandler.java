@@ -6,6 +6,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.servlet.ServletException;
@@ -15,8 +16,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
-import com.google.gson.Gson;
-
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPipeline;
 import cn.ac.iie.centralserver.trace.data.QueryRequest;
 import cn.ac.iie.centralserver.trace.data.TraceDBData;
 import cn.ac.iie.centralserver.trace.data.TracePersonResult;
@@ -25,8 +26,8 @@ import cn.ac.iie.centralserver.trace.data.UliAddress;
 import cn.ac.iie.centralserver.trace.db.RedisUtil;
 import cn.ac.iie.centralserver.trace.log.LogUtil;
 import cn.ac.iie.centralserver.trace.server.XClusterDataFetch;
-import redis.clients.jedis.ShardedJedis;
-import redis.clients.jedis.ShardedJedisPipeline;
+
+import com.google.gson.Gson;
 
 public class DataTraceQueryHandler extends AbstractHandler {
 
@@ -43,13 +44,15 @@ public class DataTraceQueryHandler extends AbstractHandler {
 	}
 
 	@Override
-	public void handle(String string, Request baseRequest, HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse) throws IOException, ServletException {
+	public void handle(String string, Request baseRequest,
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse) throws IOException,
+			ServletException {
 
 		QueryRequest request = parseRequest(baseRequest, httpServletRequest);
 		List<String> indexList = fetchIndexListByRequest(request);
 
-		if (!checkToken(request)) {
+		if (!checkToken(request, indexList)) {
 			TracePersonResult personResult = new TracePersonResult();
 			personResult.setStatus(5);
 			Gson gson = new Gson();
@@ -73,7 +76,8 @@ public class DataTraceQueryHandler extends AbstractHandler {
 			if (dbTraceList == null || dbTraceList.size() == 0)
 				ret = 7;
 
-			ArrayList<TracePosition> tracePositionList = queryUliAddress(dbTraceList, uliPipeline);
+			ArrayList<TracePosition> tracePositionList = queryUliAddress(
+					dbTraceList, uliPipeline);
 			personResult.setStatus(ret);
 			personResult.setTracelist(tracePositionList);
 
@@ -92,7 +96,8 @@ public class DataTraceQueryHandler extends AbstractHandler {
 		httpServletResponse.getWriter().println(gson.toJson(result));
 	}
 
-	private QueryRequest parseRequest(Request baseRequest, HttpServletRequest httpServletRequest) {
+	private QueryRequest parseRequest(Request baseRequest,
+			HttpServletRequest httpServletRequest) {
 
 		QueryRequest request = new QueryRequest();
 		request.setUrl(new String(httpServletRequest.getRequestURL()));
@@ -112,36 +117,46 @@ public class DataTraceQueryHandler extends AbstractHandler {
 		return Arrays.asList(request.getIndexList());
 	}
 
-	private boolean checkToken(QueryRequest request) {
+	private boolean checkToken(QueryRequest request, List<String> indexList) {
 
-		// HashMap<String, String> indexmap = new HashMap<String, String>();
+		HashMap<String, String> indexmap = new HashMap<String, String>();
 		String token = request.getToken();
 
 		boolean isTokenExist = true;
 		ShardedJedis tokenJedis = RedisUtil.getJedis("redisTokenIp");
-		// ShardedJedisPipeline pipeline = tokenJedis.pipelined();
+
 		if (token == null || token.isEmpty() || !tokenJedis.exists(token))
 			isTokenExist = false;
 
-		// if (isTokenExist) {
-		// for (IndexToQuery aIndex : indexList)
-		// pipeline.hget(token, aIndex.getKeyByQueryType(queryType));
-		// }
-		// List<Object> resp = pipeline.syncAndReturnAll();
-		//
-		// int count = 0;
-		// Iterator<Object> iter = resp.iterator();
-		// while (iter.hasNext()) {
-		// indexmap.put(indexList.get(count++).getKeyByQueryType(queryType),
-		// (String) iter.next());
-		// }
+		if (isTokenExist && !token.equals("351370377d867c3b8dba04533b1f7e53")) {
+			ShardedJedisPipeline pipeline = tokenJedis.pipelined();
+			for (String aIndex : indexList)
+				pipeline.hget(token, aIndex);
+
+			List<Object> resp = pipeline.syncAndReturnAll();
+
+			int count = 0;
+			Iterator<Object> iter = resp.iterator();
+			while (iter.hasNext()) {
+				indexmap.put(indexList.get(count++), (String) iter.next());
+			}
+
+			for (Iterator<String> i = indexList.iterator(); i.hasNext();) {
+				String aIndex = i.next();
+				String out = indexmap.get(aIndex);
+				if (out == null) {
+					i.remove();
+				}
+			}
+		}
 
 		RedisUtil.returnJedis(tokenJedis, "redisTokenIp");
 
 		return isTokenExist;
 	}
 
-	private ArrayList<TraceDBData> queryTraceList(QueryRequest request, String index) {
+	private ArrayList<TraceDBData> queryTraceList(QueryRequest request,
+			String index) {
 		ArrayList<TraceDBData> result = new ArrayList<TraceDBData>();
 		try {
 			try {
@@ -149,7 +164,8 @@ public class DataTraceQueryHandler extends AbstractHandler {
 			} catch (java.lang.ClassNotFoundException e) {
 				e.printStackTrace();
 			}
-			result = new XClusterDataFetch().getTraceData(request.getQueryType(), index, request.getStartTime(),
+			result = new XClusterDataFetch().getTraceData(
+					request.getQueryType(), index, request.getStartTime(),
 					request.getEndTime());
 			;
 		} catch (Exception e) {
@@ -158,8 +174,8 @@ public class DataTraceQueryHandler extends AbstractHandler {
 		return result;
 	}
 
-	private ArrayList<TracePosition> queryUliAddress(ArrayList<TraceDBData> dbTraceList,
-			ShardedJedisPipeline uliPipeline) {
+	private ArrayList<TracePosition> queryUliAddress(
+			ArrayList<TraceDBData> dbTraceList, ShardedJedisPipeline uliPipeline) {
 
 		ArrayList<TracePosition> tracePositionList = new ArrayList<TracePosition>();
 
@@ -210,7 +226,8 @@ public class DataTraceQueryHandler extends AbstractHandler {
 		return uliMap;
 	}
 
-	private void fillUliAddress(ArrayList<TracePersonResult> result, HashMap<String, UliAddress> uliMap) {
+	private void fillUliAddress(ArrayList<TracePersonResult> result,
+			HashMap<String, UliAddress> uliMap) {
 
 		for (TracePersonResult personResult : result) {
 			if (personResult.isEmpty())

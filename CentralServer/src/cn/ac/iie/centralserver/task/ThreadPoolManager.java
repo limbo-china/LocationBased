@@ -10,9 +10,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-/**
- * 绾跨▼姹犵鐞�(绾跨▼缁熶竴璋冨害绠＄悊)
- */
 public final class ThreadPoolManager {
 
 	private static ThreadPoolManager sThreadPoolManager = new ThreadPoolManager();

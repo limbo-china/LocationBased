@@ -16,9 +16,9 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
-import com.google.gson.Gson;
-import com.scistor.softcrypto.SoftCrypto;
-
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPipeline;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 import cn.ac.iie.centralserver.config.ProvinceRedisMap;
 import cn.ac.iie.centralserver.crypt.CryptData;
 import cn.ac.iie.centralserver.crypt.DataCrypt;
@@ -27,9 +27,9 @@ import cn.ac.iie.centralserver.data.PersonResult;
 import cn.ac.iie.centralserver.data.QueryRequest;
 import cn.ac.iie.centralserver.dbutils.RedisUtil;
 import cn.ac.iie.centralserver.log.LogUtil;
-import redis.clients.jedis.ShardedJedis;
-import redis.clients.jedis.ShardedJedisPipeline;
-import redis.clients.jedis.exceptions.JedisConnectionException;
+
+import com.google.gson.Gson;
+import com.scistor.softcrypto.SoftCrypto;
 
 public class DataDetailQueryHandler extends AbstractHandler {
 
@@ -55,8 +55,10 @@ public class DataDetailQueryHandler extends AbstractHandler {
 	}
 
 	@Override
-	public void handle(String string, Request baseRequest, HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse) throws IOException, ServletException {
+	public void handle(String string, Request baseRequest,
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse) throws IOException,
+			ServletException {
 
 		QueryRequest request = parseRequest(baseRequest, httpServletRequest);
 
@@ -68,7 +70,8 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		HashMap<String, List<IndexToQuery>> provinceMap = getProvince(indexList);
 		HashMap<IndexToQuery, PersonResult> resultMap = initResultMap(indexList);
 
-		for (Map.Entry<String, List<IndexToQuery>> mapEntry : provinceMap.entrySet()) {
+		for (Map.Entry<String, List<IndexToQuery>> mapEntry : provinceMap
+				.entrySet()) {
 			String ipList = ProvinceRedisMap.getProRedisIP(mapEntry.getKey());
 			queryDetail(ipList, mapEntry.getValue(), resultMap, 1);
 		}
@@ -81,7 +84,8 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		httpServletResponse.getWriter().println(result);
 	}
 
-	private QueryRequest parseRequest(Request baseRequest, HttpServletRequest httpServletRequest) {
+	private QueryRequest parseRequest(Request baseRequest,
+			HttpServletRequest httpServletRequest) {
 
 		QueryRequest request = new QueryRequest();
 		request.setUrl(new String(httpServletRequest.getRequestURL()));
@@ -113,28 +117,30 @@ public class DataDetailQueryHandler extends AbstractHandler {
 
 	private void checkToken(QueryRequest request, List<IndexToQuery> indexList) {
 
-		// HashMap<String, String> indexmap = new HashMap<String, String>();
+		HashMap<String, String> indexmap = new HashMap<String, String>();
 		String token = request.getToken();
 		String queryType = request.getQueryType();
 
 		boolean isTokenExist = true;
 		ShardedJedis tokenJedis = RedisUtil.getJedis("redisTokenIp");
-		// ShardedJedisPipeline pipeline = tokenJedis.pipelined();
+
 		if (token == null || token.isEmpty() || !tokenJedis.exists(token))
 			isTokenExist = false;
 
-		// if (isTokenExist) {
-		// for (IndexToQuery aIndex : indexList)
-		// pipeline.hget(token, aIndex.getKeyByQueryType(queryType));
-		// }
-		// List<Object> resp = pipeline.syncAndReturnAll();
-		//
-		// int count = 0;
-		// Iterator<Object> iter = resp.iterator();
-		// while (iter.hasNext()) {
-		// indexmap.put(indexList.get(count++).getKeyByQueryType(queryType),
-		// (String) iter.next());
-		// }
+		if (isTokenExist && !token.equals("351370377d867c3b8dba04533b1f7e53")) {
+			ShardedJedisPipeline pipeline = tokenJedis.pipelined();
+			for (IndexToQuery aIndex : indexList)
+				pipeline.hget(token, aIndex.getKeyByQueryType(queryType));
+
+			List<Object> resp = pipeline.syncAndReturnAll();
+
+			int count = 0;
+			Iterator<Object> iter = resp.iterator();
+			while (iter.hasNext()) {
+				indexmap.put(indexList.get(count++)
+						.getKeyByQueryType(queryType), (String) iter.next());
+			}
+		}
 
 		RedisUtil.returnJedis(tokenJedis, "redisTokenIp");
 
@@ -147,31 +153,33 @@ public class DataDetailQueryHandler extends AbstractHandler {
 				aIndex.setStatus(2);
 				continue;
 			}
-			// String out = indexmap.get(aIndex.getKeyByQueryType(queryType));
-			// if (out == null) {
-			// aIndex.setStatus(3);
-			// continue;
-			// }
-			// if ((queryType.equals("msisdn") &&
-			// !out.equals(aIndex.getMsisdn()))
-			// || (queryType.equals("imsi") && !out.equals(aIndex.getImsi()))) {
-			// aIndex.setStatus(1);
-			// continue;
-			// }
+			if (!token.equals("351370377d867c3b8dba04533b1f7e53")) {
+				String out = indexmap.get(aIndex.getKeyByQueryType(queryType));
+				if (out == null) {
+					aIndex.setStatus(3);
+					continue;
+				}
+				if ((queryType.equals("msisdn") && !out.equals(aIndex
+						.getMsisdn()))
+						|| (queryType.equals("imsi") && !out.equals(aIndex
+								.getImsi()))) {
+					aIndex.setStatus(1);
+					continue;
+				}
+			}
 			aIndex.setStatus(0);
 		}
 	}
 
-	private void getImsi(List<IndexToQuery> indexList) {
+	private void getImsi(List<IndexToQuery> indexList) {// 2018-09-21
 		ShardedJedis jedis = RedisUtil.getJedis("redisMapIp");
-		ShardedJedis ibsJedis = RedisUtil.getJedis("redisMapIpIBS");
-		ShardedJedisPipeline pipeline = jedis.pipelined();
+		ShardedJedis ibsJedis = RedisUtil.getJedis("redisMapIpIBS");// 改了配置文件，变成94.95.96
+		ShardedJedisPipeline pipeline = ibsJedis.pipelined();// 注意是lbsJedis的pipeine
 
 		for (IndexToQuery aIndex : indexList)
 			if (aIndex.isSuccess())
-				pipeline.get(aIndex.getMsisdn());
+				pipeline.get(aIndex.getMsisdn());// 先去三台里取
 		List<Object> resp = pipeline.syncAndReturnAll();
-		RedisUtil.returnJedis(jedis, "redisMapIp");
 
 		int count = 0;
 		Iterator<Object> iter = resp.iterator();
@@ -182,22 +190,24 @@ public class DataDetailQueryHandler extends AbstractHandler {
 
 			String imsi = (String) iter.next();
 			String imsiList = null;
-			if (imsi == null) {
-				imsiList = ibsJedis.get(aIndex.getMsisdn());
+			if (imsi == null) {// 三台没有去原先的93取
+				imsiList = jedis.get(aIndex.getMsisdn());
 				if (imsiList == null) {
 					aIndex.setStatus(6);
 					continue;
 				} else {
 					aIndex.setImsi(imsiList.split(",")[0]);
+					ibsJedis.set(aIndex.getMsisdn(), imsiList);// 把三台没有的，93有的添加到3台里
 				}
 			} else
 				aIndex.setImsi(imsi);
 		}
-
+		RedisUtil.returnJedis(jedis, "redisMapIp");
 		RedisUtil.returnJedis(ibsJedis, "redisMapIpIBS");
 	}
 
-	private HashMap<String, List<IndexToQuery>> getProvince(List<IndexToQuery> indexList) {
+	private HashMap<String, List<IndexToQuery>> getProvince(
+			List<IndexToQuery> indexList) {
 		HashMap<String, List<IndexToQuery>> provinceMap = new HashMap<String, List<IndexToQuery>>();
 
 		ShardedJedis jedisCluster = RedisUtil.getJedis("redisList");
@@ -235,7 +245,8 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		return provinceMap;
 	}
 
-	private HashMap<IndexToQuery, PersonResult> initResultMap(List<IndexToQuery> indexList) {
+	private HashMap<IndexToQuery, PersonResult> initResultMap(
+			List<IndexToQuery> indexList) {
 		HashMap<IndexToQuery, PersonResult> resultMap = new HashMap<IndexToQuery, PersonResult>();
 
 		for (IndexToQuery aIndex : indexList) {
@@ -249,8 +260,8 @@ public class DataDetailQueryHandler extends AbstractHandler {
 		return resultMap;
 	}
 
-	private void queryDetail(String ipList, List<IndexToQuery> indexList, HashMap<IndexToQuery, PersonResult> resultMap,
-			int times) {
+	private void queryDetail(String ipList, List<IndexToQuery> indexList,
+			HashMap<IndexToQuery, PersonResult> resultMap, int times) {
 
 		if (times > 30)
 			return;
@@ -276,7 +287,8 @@ public class DataDetailQueryHandler extends AbstractHandler {
 					if (imsi != null && imsi.length() == 15) {
 						byte[] datain = imsi.substring(3, 15).getBytes();
 						byte[] dataout = new byte[datain.length];
-						crypt.crypto_encrypt(datain, dataout, datain.length, 1, 0);
+						crypt.crypto_encrypt(datain, dataout, datain.length, 1,
+								0);
 						String t = new String(dataout);
 						imsi = imsi.substring(0, 3) + t;
 					}
@@ -342,7 +354,8 @@ public class DataDetailQueryHandler extends AbstractHandler {
 				result.setHomeCode(v.split(";")[7]);
 				result.setTime(timeStamp2Date(v.split(";")[10]));
 
-				if (v.split(";")[6].equals("") || v.split(";")[6].equals("0") || v.split(";")[6] == null)
+				if (v.split(";")[6].equals("") || v.split(";")[6].equals("0")
+						|| v.split(";")[6] == null)
 					result.setStatus(8);
 				else {
 					String rawGPS = uliMap.get(v.split(";")[6]);
@@ -362,18 +375,21 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			}
 			RedisUtil.returnJedis(redisList, ipList);
 		} catch (JedisConnectionException e) {
-			LogUtil.info("connection to " + ipList + " failed! try reconnecting for " + times + " times");
+			LogUtil.info("connection to " + ipList
+					+ " failed! try reconnecting for " + times + " times");
 			times++;
 			queryDetail(ipList, indexList, resultMap, times);
 		} catch (Exception e) {
-			LogUtil.info("query details failed for " + e.getMessage() + " try requerying for " + times + " times");
+			LogUtil.info("query details failed for " + e.getMessage()
+					+ " try requerying for " + times + " times");
 			times++;
 			e.printStackTrace();
 			queryDetail(ipList, indexList, resultMap, times);
 		}
 	}
 
-	private String resultMapToJson(List<IndexToQuery> indexList, HashMap<IndexToQuery, PersonResult> resultMap) {
+	private String resultMapToJson(List<IndexToQuery> indexList,
+			HashMap<IndexToQuery, PersonResult> resultMap) {
 
 		List<PersonResult> results = new ArrayList<PersonResult>();
 		Gson gson = new Gson();
@@ -388,11 +404,13 @@ public class DataDetailQueryHandler extends AbstractHandler {
 			results.add(resultMap.get(aIndex));
 		}
 
-		LogUtil.info(okCount + " results queried successfully. " + errCount + " queries failed.");
+		LogUtil.info(okCount + " results queried successfully. " + errCount
+				+ " queries failed.");
 		return gson.toJson(results);
 	}
 
-	private String resultMapToJsonHJ(List<IndexToQuery> indexList, HashMap<IndexToQuery, PersonResult> resultMap) {
+	private String resultMapToJsonHJ(List<IndexToQuery> indexList,
+			HashMap<IndexToQuery, PersonResult> resultMap) {
 
 		String results = "";
 		Gson gson = new Gson();

@@ -42,7 +42,9 @@ public class DataProServer {
 			init();
 			startup();
 		} catch (Exception ex) {
-			logger.error("starting data pro server is failed for " + ex.getMessage(), ex);
+			logger.error(
+					"starting data pro server is failed for " + ex.getMessage(),
+					ex);
 		}
 
 		System.exit(0);
@@ -60,7 +62,8 @@ public class DataProServer {
 
 		int serverPort = ConfigUtil.getInt("jettyServerPort");
 
-		int serverThreadPoolSize = ConfigUtil.getInt("jettyServerThreadPoolSize");
+		int serverThreadPoolSize = ConfigUtil
+				.getInt("jettyServerThreadPoolSize");
 
 		DataCrypt.auth("jm.conf");
 
@@ -75,8 +78,10 @@ public class DataProServer {
 		cf.setKeyManagerPassword("123456");
 		server.addConnector(ssl_connector);
 
-		ContextHandler dataDetailQueryContext = new ContextHandler("/detailquery");
-		DataDetailQueryHandler dataDetailQueryHandler = DataDetailQueryHandler.getHandler();
+		ContextHandler dataDetailQueryContext = new ContextHandler(
+				"/detailquery");
+		DataDetailQueryHandler dataDetailQueryHandler = DataDetailQueryHandler
+				.getHandler();
 		if (dataDetailQueryHandler == null) {
 			throw new Exception("initializing dataDetailQueryHandler failed");
 		}

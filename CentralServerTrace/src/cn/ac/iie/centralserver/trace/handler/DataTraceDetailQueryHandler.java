@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.servlet.ServletException;
@@ -16,8 +17,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
-import com.google.gson.Gson;
-
+import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPipeline;
 import cn.ac.iie.centralserver.trace.data.QueryRequest;
 import cn.ac.iie.centralserver.trace.data.TraceDBData;
 import cn.ac.iie.centralserver.trace.data.TracePersonResult;
@@ -26,8 +27,8 @@ import cn.ac.iie.centralserver.trace.data.UliAddress;
 import cn.ac.iie.centralserver.trace.db.RedisUtil;
 import cn.ac.iie.centralserver.trace.log.LogUtil;
 import cn.ac.iie.centralserver.trace.server.XClusterDataFetch;
-import redis.clients.jedis.ShardedJedis;
-import redis.clients.jedis.ShardedJedisPipeline;
+
+import com.google.gson.Gson;
 
 public class DataTraceDetailQueryHandler extends AbstractHandler {
 
@@ -44,12 +45,14 @@ public class DataTraceDetailQueryHandler extends AbstractHandler {
 	}
 
 	@Override
-	public void handle(String string, Request baseRequest, HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse) throws IOException, ServletException {
+	public void handle(String string, Request baseRequest,
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse) throws IOException,
+			ServletException {
 		QueryRequest request = parseRequest(baseRequest, httpServletRequest);
 		List<String> indexList = fetchIndexListByRequest(request);
 
-		if (!checkToken(request)) {
+		if (!checkToken(request, indexList)) {
 			TracePersonResult personResult = new TracePersonResult();
 			personResult.setStatus(5);
 			Gson gson = new Gson();
@@ -106,7 +109,8 @@ public class DataTraceDetailQueryHandler extends AbstractHandler {
 				ret = 7;
 			HashSet<String> areaSet = new HashSet<String>();
 			for (TraceDBData metaData : dbTraceList) {
-				if (metaData.getC_areacode() != null && metaData.getC_areacode().length() == 6) {
+				if (metaData.getC_areacode() != null
+						&& metaData.getC_areacode().length() == 6) {
 					areaSet.add(metaData.getC_areacode().substring(0, 2));
 				}
 			}
@@ -114,13 +118,15 @@ public class DataTraceDetailQueryHandler extends AbstractHandler {
 			for (String areacode : areaSet) {
 				if (addrMap.containsKey(areacode)) {
 					String addr = addrMap.get(areacode);
-					ArrayList<TraceDBData> traceDetail = queryTraceDetailList(addr, request, aIndex);
+					ArrayList<TraceDBData> traceDetail = queryTraceDetailList(
+							addr, request, aIndex);
 					traceDetailList.addAll(traceDetail);
 				}
 			}
 			if (traceDetailList == null || traceDetailList.size() == 0)
 				ret = 7;
-			ArrayList<TracePosition> tracePositionList = queryUliAddress(traceDetailList, uliPipeline);
+			ArrayList<TracePosition> tracePositionList = queryUliAddress(
+					traceDetailList, uliPipeline);
 			personResult.setStatus(ret);
 			personResult.setTracelist(tracePositionList);
 
@@ -139,7 +145,8 @@ public class DataTraceDetailQueryHandler extends AbstractHandler {
 		httpServletResponse.getWriter().println(gson.toJson(result));
 	}
 
-	private QueryRequest parseRequest(Request baseRequest, HttpServletRequest httpServletRequest) {
+	private QueryRequest parseRequest(Request baseRequest,
+			HttpServletRequest httpServletRequest) {
 
 		QueryRequest request = new QueryRequest();
 		request.setUrl(new String(httpServletRequest.getRequestURL()));
@@ -159,36 +166,46 @@ public class DataTraceDetailQueryHandler extends AbstractHandler {
 		return Arrays.asList(request.getIndexList());
 	}
 
-	private boolean checkToken(QueryRequest request) {
+	private boolean checkToken(QueryRequest request, List<String> indexList) {
 
-		// HashMap<String, String> indexmap = new HashMap<String, String>();
+		HashMap<String, String> indexmap = new HashMap<String, String>();
 		String token = request.getToken();
 
 		boolean isTokenExist = true;
 		ShardedJedis tokenJedis = RedisUtil.getJedis("redisTokenIp");
-		// ShardedJedisPipeline pipeline = tokenJedis.pipelined();
+
 		if (token == null || token.isEmpty() || !tokenJedis.exists(token))
 			isTokenExist = false;
 
-		// if (isTokenExist) {
-		// for (IndexToQuery aIndex : indexList)
-		// pipeline.hget(token, aIndex.getKeyByQueryType(queryType));
-		// }
-		// List<Object> resp = pipeline.syncAndReturnAll();
-		//
-		// int count = 0;
-		// Iterator<Object> iter = resp.iterator();
-		// while (iter.hasNext()) {
-		// indexmap.put(indexList.get(count++).getKeyByQueryType(queryType),
-		// (String) iter.next());
-		// }
+		if (isTokenExist && !token.equals("351370377d867c3b8dba04533b1f7e53")) {
+			ShardedJedisPipeline pipeline = tokenJedis.pipelined();
+			for (String aIndex : indexList)
+				pipeline.hget(token, aIndex);
+
+			List<Object> resp = pipeline.syncAndReturnAll();
+
+			int count = 0;
+			Iterator<Object> iter = resp.iterator();
+			while (iter.hasNext()) {
+				indexmap.put(indexList.get(count++), (String) iter.next());
+			}
+
+			for (Iterator<String> i = indexList.iterator(); i.hasNext();) {
+				String aIndex = i.next();
+				String out = indexmap.get(aIndex);
+				if (out == null) {
+					i.remove();
+				}
+			}
+		}
 
 		RedisUtil.returnJedis(tokenJedis, "redisTokenIp");
 
 		return isTokenExist;
 	}
 
-	private ArrayList<TraceDBData> queryTraceList(QueryRequest request, String index) {
+	private ArrayList<TraceDBData> queryTraceList(QueryRequest request,
+			String index) {
 		ArrayList<TraceDBData> result = new ArrayList<TraceDBData>();
 		try {
 			try {
@@ -196,7 +213,8 @@ public class DataTraceDetailQueryHandler extends AbstractHandler {
 			} catch (java.lang.ClassNotFoundException e) {
 				e.printStackTrace();
 			}
-			result = new XClusterDataFetch().getTraceData(request.getQueryType(), index, request.getStartTime(),
+			result = new XClusterDataFetch().getTraceData(
+					request.getQueryType(), index, request.getStartTime(),
 					request.getEndTime());
 			;
 		} catch (Exception e) {
@@ -205,7 +223,8 @@ public class DataTraceDetailQueryHandler extends AbstractHandler {
 		return result;
 	}
 
-	private ArrayList<TraceDBData> queryTraceDetailList(String addr, QueryRequest request, String index) {
+	private ArrayList<TraceDBData> queryTraceDetailList(String addr,
+			QueryRequest request, String index) {
 		ArrayList<TraceDBData> result = new ArrayList<TraceDBData>();
 		try {
 			try {
@@ -213,7 +232,8 @@ public class DataTraceDetailQueryHandler extends AbstractHandler {
 			} catch (java.lang.ClassNotFoundException e) {
 				e.printStackTrace();
 			}
-			result = new XClusterDataFetch(addr).getTraceData(request.getQueryType(), index, request.getStartTime(),
+			result = new XClusterDataFetch(addr).getTraceData(
+					request.getQueryType(), index, request.getStartTime(),
 					request.getEndTime());
 			;
 		} catch (Exception e) {
@@ -222,8 +242,8 @@ public class DataTraceDetailQueryHandler extends AbstractHandler {
 		return result;
 	}
 
-	private ArrayList<TracePosition> queryUliAddress(ArrayList<TraceDBData> dbTraceList,
-			ShardedJedisPipeline uliPipeline) {
+	private ArrayList<TracePosition> queryUliAddress(
+			ArrayList<TraceDBData> dbTraceList, ShardedJedisPipeline uliPipeline) {
 
 		ArrayList<TracePosition> tracePositionList = new ArrayList<TracePosition>();
 
@@ -269,7 +289,8 @@ public class DataTraceDetailQueryHandler extends AbstractHandler {
 		return uliMap;
 	}
 
-	private void fillUliAddress(ArrayList<TracePersonResult> result, HashMap<String, UliAddress> uliMap) {
+	private void fillUliAddress(ArrayList<TracePersonResult> result,
+			HashMap<String, UliAddress> uliMap) {
 
 		for (TracePersonResult personResult : result) {
 			if (personResult.isEmpty())

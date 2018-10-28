@@ -9,39 +9,27 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
-import org.apache.avro.Protocol;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericArray;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.BinaryEncoder;
-import org.apache.avro.io.DatumWriter;
-import org.apache.avro.io.EncoderFactory;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
+import javax.xml.validation.Schema;
 
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Pipeline;
 import cn.ac.iie.hy.dataload.dbutils.RedisUtil;
 import cn.ac.iie.hy.dataload.tokenbucket.TokenBucket;
 import cn.ac.iie.hy.dataload.tokenbucket.TokenBuckets;
 
 /**
- * 鈹佲攣鈹佲攣鈹佲攣绁炲吔鍑烘病鈹佲攣鈹佲攣鈹佲攣 銆�銆�銆�鈹忊敁銆�銆�銆�鈹忊敁 銆�銆�鈹忊敍鈹烩攣鈹佲攣鈹涒敾鈹�
- * 銆�銆�鈹冦��銆�銆�銆�銆�銆�銆�鈹� 銆�銆�鈹冦��銆�銆�鈹併��銆�銆�鈹� 銆�銆�鈹冦��鈹斥敍銆�鈹椻敵銆�鈹�
- * 銆�銆�鈹冦��銆�銆�銆�銆�銆�銆�鈹� 銆�銆�鈹冦��銆�銆�鈹汇��銆�銆�鈹� 銆�銆�鈹冦��銆�銆�銆�銆�銆�銆�鈹�
- * 銆�銆�鈹椻攣鈹撱��銆�銆�鈹忊攣鈹� 銆�銆�銆�銆�鈹冦��銆�銆�鈹冪鍏戒繚浣�, 姘告棤BUG! 銆�銆�銆�銆�鈹冦��銆�銆�鈹僀ode
- * is far away from bug with the animal protecting 銆�銆�銆�銆�鈹冦��銆�銆�鈹椻攣鈹佲攣鈹�
- * 銆�銆�銆�銆�鈹冦��銆�銆�銆�銆�銆�銆�鈹ｂ敁 銆�銆�銆�銆�鈹冦��銆�銆�銆�銆�銆�銆�鈹忊敍
- * 銆�銆�銆�銆�鈹椻敁鈹撯攺鈹佲敵鈹撯攺鈹� 銆�銆�銆�銆�銆�鈹冣敨鈹��鈹冣敨鈹� 銆�銆�銆�銆�銆�鈹椻敾鈹涖��鈹椻敾鈹�
- * 鈹佲攣鈹佲攣鈹佲攣鎰熻钀岃悓鍝掆攣鈹佲攣鈹佲攣鈹�
+ * 閳逛讲鏀ｉ埞浣叉敚閳逛讲鏀ｇ粊鐐插悢閸戠儤鐥呴埞浣叉敚閳逛讲鏀ｉ埞浣叉敚 閵嗭拷閵嗭拷閵嗭拷閳瑰繆鏁侀妴锟介妴锟介妴锟介埞蹇婃晛
+ * 閵嗭拷閵嗭拷閳瑰繆鏁嶉埞鐑╂敚閳逛讲鏀ｉ埞娑掓暰閳癸拷 閵嗭拷閵嗭拷閳瑰啨锟斤拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳癸拷
+ * 閵嗭拷閵嗭拷閳瑰啨锟斤拷閵嗭拷閵嗭拷閳逛降锟斤拷閵嗭拷閵嗭拷閳癸拷 閵嗭拷閵嗭拷閳瑰啨锟斤拷閳规枼鏁嶉妴锟介埞妞绘暤閵嗭拷閳癸拷
+ * 閵嗭拷閵嗭拷閳瑰啨锟斤拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳癸拷 閵嗭拷閵嗭拷閳瑰啨锟斤拷閵嗭拷閵嗭拷閳规眹锟斤拷閵嗭拷閵嗭拷閳癸拷
+ * 閵嗭拷閵嗭拷閳瑰啨锟斤拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳癸拷 閵嗭拷閵嗭拷閳规せ鏀ｉ埞鎾憋拷锟介妴锟介妴锟介埞蹇婃敚閳癸拷
+ * 閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳瑰啨锟斤拷閵嗭拷閵嗭拷閳瑰啰顨ｉ崗鎴掔箽娴ｏ拷, 濮樺憡妫UG! 閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳瑰啨锟斤拷閵嗭拷閵嗭拷閳瑰儉ode
+ * is far away from bug with the animal protecting
+ * 閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳瑰啨锟斤拷閵嗭拷閵嗭拷閳规せ鏀ｉ埞浣叉敚閳癸拷
+ * 閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳瑰啨锟斤拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳癸絺鏁�
+ * 閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳瑰啨锟斤拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳瑰繆鏁� 閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳规せ鏁侀埞鎾敽閳逛讲鏁甸埞鎾敽閳癸拷
+ * 閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳瑰啠鏁ㄩ埞顐狅拷锟介埞鍐ｆ暔閳癸拷 閵嗭拷閵嗭拷閵嗭拷閵嗭拷閵嗭拷閳规せ鏁鹃埞娑栵拷锟介埞妞绘暰閳癸拷
+ * 閳逛讲鏀ｉ埞浣叉敚閳逛讲鏀ｉ幇鐔活潕閽�宀冩倱閸濇巻鏀ｉ埞浣叉敚閳逛讲鏀ｉ埞锟�
  * 
  * @author zhangyu
  *
@@ -75,13 +63,13 @@ public class DataLoadTask implements Runnable {
 		try {
 			Protocol protocol = Protocol.parse(new File("t_cdr_in.json"));
 
-			// 寰楀埌鏁翠釜鏁版嵁鍖卍oc_set鐨勬牸寮�
+			// 瀵版鍩岄弫缈犻嚋閺佺増宓侀崠鍗峯c_set閻ㄥ嫭鐗稿锟�
 			Schema docsSchema = protocol.getType("docs");
 			GenericRecord docsRecord = new GenericData.Record(docsSchema);
 			GenericArray docSet = new GenericData.Array<GenericRecord>(
 					al.size(), docsSchema.getField("doc_set").schema());
 
-			// 鏁版嵁鍖呭唴姣忎釜record鐨勫叿浣撴牸寮�
+			// 閺佺増宓侀崠鍛敶濮ｅ繋閲渞ecord閻ㄥ嫬鍙挎担鎾寸壐瀵拷
 			Schema dataSchema = protocol.getType("t_cdr_in");
 
 			DatumWriter<GenericRecord> dataWriter = new GenericDatumWriter<GenericRecord>(
@@ -103,11 +91,11 @@ public class DataLoadTask implements Runnable {
 					continue;
 				}
 
-				// String homecode = areaID;
+				String homecode = areaID;
 
 				// for test
-				String[] areaIDs = areaID.split(",");
-				String homecode = areaIDs[random.nextInt(areaIDs.length)];
+				// String[] areaIDs = areaID.split(",");
+				// String homecode = areaIDs[random.nextInt(areaIDs.length)];
 
 				GenericRecord dataRecord = new GenericData.Record(dataSchema);
 				dataRecord.put("imsi", items[0]);
@@ -129,10 +117,10 @@ public class DataLoadTask implements Runnable {
 
 			}
 
-			// 灏嗕簩杩涘埗鏁版嵁濉厖
+			// 鐏忓棔绨╂潻娑樺煑閺佺増宓佹繅顐㈠帠
 			docsRecord.put("doc_set", docSet);
 			docsRecord.put("doc_schema_name", "xl");
-			// 绛惧悕鍙牴鎹笟鍔＄郴缁熼渶姹傛潵濉啓
+			// 缁涙儳鎮曢崣顖涚壌閹诡喕绗熼崝锛勯兇缂佺喖娓跺Ч鍌涙降婵夘偄鍟�
 			docsRecord.put("sign", "your sign");
 			// System.out.println(docsRecord);
 			DatumWriter<GenericRecord> docsWriter = new GenericDatumWriter<GenericRecord>(

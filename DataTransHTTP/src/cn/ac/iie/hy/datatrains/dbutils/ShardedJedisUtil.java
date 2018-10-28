@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
@@ -25,18 +23,19 @@ public class ShardedJedisUtil {
 		poolConfig.setMaxTotal(5000);
 		poolConfig.setMaxIdle(4096);
 		poolConfig.setMaxWaitMillis(20000);
-		
+
 		poolConfig.setTestOnBorrow(false);
 		poolConfig.setTestOnReturn(false);
 
 		Properties pps = new Properties();
 		try {
-			InputStream in = new BufferedInputStream(new FileInputStream(confFilePath));
+			InputStream in = new BufferedInputStream(new FileInputStream(
+					confFilePath));
 			pps.load(in);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		String value = pps.getProperty(key);// ip:port
 		List<JedisShardInfo> infoList = new ArrayList<JedisShardInfo>();
 
@@ -47,7 +46,7 @@ public class ShardedJedisUtil {
 			infoList.add(new JedisShardInfo(ip, port));
 		}
 		jedisPool = new ShardedJedisPool(poolConfig, infoList);
-		
+
 	}
 
 	public ShardedJedisUtil() {

@@ -2,7 +2,7 @@ package cn.ac.iie.centralserver.trace.data;
 
 import java.io.Serializable;
 
-public class TraceDBData implements Serializable{
+public class TraceDBData implements Serializable,Comparable<TraceDBData>{
 	/**
 	 * 
 	 */
@@ -50,5 +50,9 @@ public class TraceDBData implements Serializable{
 	}
 	public void setC_timestamp(Long c_timestamp) {
 		this.c_timestamp = c_timestamp;
+	}
+	@Override
+	public int compareTo(TraceDBData o) {
+		return (this.c_timestamp<o.c_timestamp)?-1:1;
 	}
 }

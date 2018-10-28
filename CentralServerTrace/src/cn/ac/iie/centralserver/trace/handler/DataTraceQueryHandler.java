@@ -5,6 +5,7 @@ import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -75,7 +76,7 @@ public class DataTraceQueryHandler extends AbstractHandler {
 			ArrayList<TraceDBData> dbTraceList = queryTraceList(request, aIndex);
 			if (dbTraceList == null || dbTraceList.size() == 0)
 				ret = 7;
-
+			Collections.sort(dbTraceList);
 			ArrayList<TracePosition> tracePositionList = queryUliAddress(
 					dbTraceList, uliPipeline);
 			personResult.setStatus(ret);

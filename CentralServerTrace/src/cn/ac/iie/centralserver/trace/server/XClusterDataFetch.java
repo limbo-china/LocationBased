@@ -73,7 +73,8 @@ public class XClusterDataFetch implements Serializable {
 		host = addr;
 	}
 
-	public ArrayList<TraceDBData> getTraceData(String queryType, String index, String starttime, String endtime) {
+	public ArrayList<TraceDBData> getTraceData(String queryType, String index,
+			String starttime, String endtime) {
 
 		Connection conn = null;
 		ResultSet rs = null;
@@ -82,7 +83,8 @@ public class XClusterDataFetch implements Serializable {
 		ArrayList<TraceDBData> resList = new ArrayList<TraceDBData>();
 		try {
 
-			String url = "jdbc:oscarclusterbulk://" + host + ":" + port + "/" + dbName;
+			String url = "jdbc:oscarclusterbulk://" + host + ":" + port + "/"
+					+ dbName;
 
 			p.setProperty("user", userName);
 			p.setProperty("password", passWord);
@@ -101,16 +103,18 @@ public class XClusterDataFetch implements Serializable {
 			sentence.append(" c_" + queryType + " = ").append(index);
 			sentence.append(" and c_timestamp >= ").append(start_time);
 			sentence.append(" and c_timestamp < ").append(end_time);
-			sentence.append(" order by c_timestamp asc");
 
 			LogUtil.info(sentence.toString());
 			rs = stmt.executeQuery(sentence.toString());
 
 			String f = null;
 			while (rs.next()) {
-				if (rs.getString("c_imsi") == null || rs.getString("c_imsi").equals("0")
-						|| rs.getString("c_imsi").equals("") || rs.getString("c_uli") == null
-						|| rs.getString("c_uli").equals("0") || rs.getString("c_uli").equals("")
+				if (rs.getString("c_imsi") == null
+						|| rs.getString("c_imsi").equals("0")
+						|| rs.getString("c_imsi").equals("")
+						|| rs.getString("c_uli") == null
+						|| rs.getString("c_uli").equals("0")
+						|| rs.getString("c_uli").equals("")
 						|| rs.getLong("c_timestamp") <= 0) {
 					continue;
 				}

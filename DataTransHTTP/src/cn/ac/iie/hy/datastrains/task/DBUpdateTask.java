@@ -7,14 +7,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.Logger;
 
-import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
-
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.ShardedJedis;
-import redis.clients.jedis.ShardedJedisPipeline;
 import cn.ac.iie.hy.datatrains.dbutils.RedisUtilList;
 import cn.ac.iie.hy.datatrains.dbutils.RedisUtilPro;
 import cn.ac.iie.hy.datatrains.dbutils.ShardedJedisUtil;
@@ -92,8 +86,8 @@ public class DBUpdateTask implements Runnable {
 
 	private boolean dbUpdateTaskRedis(SMetaData smd, String value,
 			Jedis configJedis, ShardedJedisPipeline cachePipe, Jedis listJedis) {
-		String key = smd.getImsi();
 
+		String key = smd.getImsi();
 		if (key.length() != 15) {
 			return false;
 		}
@@ -178,7 +172,6 @@ public class DBUpdateTask implements Runnable {
 		long startTime = System.currentTimeMillis();
 
 		try {
-
 			cacheJedis = ShardedJedisUtil.getSource();
 			wCacheJedis = ShardedJedisUtil.getSource();
 			configJedis = RedisUtilPro.getJedis();
@@ -203,6 +196,7 @@ public class DBUpdateTask implements Runnable {
 				}
 
 			}
+
 			List<Object> resp = cachePipe.syncAndReturnAll();
 			ShardedJedisPipeline wCachePipe = wCacheJedis.pipelined();
 
@@ -247,7 +241,6 @@ public class DBUpdateTask implements Runnable {
 
 			wCachePipe.sync();
 			loadPipe.sync();
-
 			Pipeline configPipe = listJedis.pipelined();
 
 			Map<String, SMetaData> changedMap = new HashMap<>();
@@ -283,6 +276,5 @@ public class DBUpdateTask implements Runnable {
 			e.printStackTrace();
 			logger.error(e);
 		}
-
 	}
 }

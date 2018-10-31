@@ -1,4 +1,4 @@
-package cn.ac.iie.centralserver.trace.data;
+package cn.ac.iie.centralserver.trace.bean;
 
 import java.io.Serializable;
 import java.util.ArrayList;

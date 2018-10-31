@@ -12,16 +12,9 @@
 	<classpathentry kind="lib" path="lib/httpcore-4.2.2.jar"/>
 	<classpathentry kind="lib" path="lib/httpmime-4.2.3.jar"/>
 	<classpathentry kind="lib" path="lib/jedis-2.6.1.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-continuation-8.1.14.v20131031.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-http-8.1.14.v20131031.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-io-8.1.14.v20131031.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-server-8.1.14.v20131031.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-servlets-8.1.14.v20131031.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-util-8.1.14.v20131031.jar"/>
 	<classpathentry kind="lib" path="lib/log4j-1.2.14.jar"/>
-	<classpathentry kind="lib" path="lib/oscarJDBC.jar"/>
 	<classpathentry kind="lib" path="lib/servlet-api-3.0.jar"/>
-	<classpathentry kind="lib" path="lib/oscarClusterJDBC.jar"/>
-	<classpathentry kind="lib" path="lib/mysql-connector-java-5.1.46.jar"/>
+	<classpathentry kind="lib" path="lib/mysql-connector-java-5.1.47.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/struts2"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

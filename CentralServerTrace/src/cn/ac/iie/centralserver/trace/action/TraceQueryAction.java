@@ -1,4 +1,4 @@
-package cn.ac.iie.centralserver.trace.handler;
+package cn.ac.iie.centralserver.trace.action;
 
 import java.io.IOException;
 import java.sql.Date;
@@ -10,63 +10,52 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.apache.struts2.ServletActionContext;
 
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPipeline;
-import cn.ac.iie.centralserver.trace.data.QueryRequest;
-import cn.ac.iie.centralserver.trace.data.TraceDBData;
-import cn.ac.iie.centralserver.trace.data.TracePersonResult;
-import cn.ac.iie.centralserver.trace.data.TracePosition;
-import cn.ac.iie.centralserver.trace.data.UliAddress;
+import cn.ac.iie.centralserver.trace.bean.QueryRequest;
+import cn.ac.iie.centralserver.trace.bean.TraceDBData;
+import cn.ac.iie.centralserver.trace.bean.TracePersonResult;
+import cn.ac.iie.centralserver.trace.bean.TracePosition;
+import cn.ac.iie.centralserver.trace.bean.UliAddress;
+import cn.ac.iie.centralserver.trace.dao.XClusterDataFetch;
 import cn.ac.iie.centralserver.trace.db.RedisUtil;
 import cn.ac.iie.centralserver.trace.log.LogUtil;
-import cn.ac.iie.centralserver.trace.server.XClusterDataFetch;
 
 import com.google.gson.Gson;
+import com.opensymphony.xwork2.ActionSupport;
 
-public class DataTraceQueryHandler extends AbstractHandler {
+public class TraceQueryAction extends ActionSupport {
 
-	private static DataTraceQueryHandler dataTraceQueryHandler = null;
+	private static final long serialVersionUID = 1L;
 
-	private DataTraceQueryHandler() {
-	}
+	public String doTraceQuery() throws IOException {
 
-	public static DataTraceQueryHandler getHandler() {
-		if (dataTraceQueryHandler != null)
-			return dataTraceQueryHandler;
-		dataTraceQueryHandler = new DataTraceQueryHandler();
-		return dataTraceQueryHandler;
-	}
-
-	@Override
-	public void handle(String string, Request baseRequest,
-			HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse) throws IOException,
-			ServletException {
-
-		QueryRequest request = parseRequest(baseRequest, httpServletRequest);
+		HttpServletRequest httpServletRequest = ServletActionContext
+				.getRequest();
+		HttpServletResponse httpServletResponse = ServletActionContext
+				.getResponse();
+		QueryRequest request = parseRequest(httpServletRequest);
 		List<String> indexList = fetchIndexListByRequest(request);
 
-		if (!checkToken(request, indexList)) {
-			TracePersonResult personResult = new TracePersonResult();
-			personResult.setStatus(5);
-			Gson gson = new Gson();
-
-			httpServletResponse.setContentType("text/json;charset=utf-8");
-			httpServletResponse.setStatus(HttpServletResponse.SC_OK);
-			baseRequest.setHandled(true);
-			httpServletResponse.getWriter().println(gson.toJson(personResult));
-			return;
-		}
-
-		ShardedJedis uliJedis = RedisUtil.getJedis("uliRedis");
-		ShardedJedisPipeline uliPipeline = uliJedis.pipelined();
+		/*
+		 * if (!checkToken(request, indexList)) { TracePersonResult personResult
+		 * = new TracePersonResult(); personResult.setStatus(5); Gson gson = new
+		 * Gson();
+		 * 
+		 * httpServletResponse.setContentType("text/json;charset=utf-8");
+		 * httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+		 * baseRequest.setHandled(true);
+		 * httpServletResponse.getWriter().println(gson.toJson(personResult));
+		 * return; }
+		 * 
+		 * ShardedJedis uliJedis = RedisUtil.getJedis("uliRedis");
+		 * ShardedJedisPipeline uliPipeline = uliJedis.pipelined();
+		 */
 
 		ArrayList<TracePersonResult> result = new ArrayList<TracePersonResult>();
 		for (String aIndex : indexList) {
@@ -77,28 +66,33 @@ public class DataTraceQueryHandler extends AbstractHandler {
 			if (dbTraceList == null || dbTraceList.size() == 0)
 				ret = 7;
 			Collections.sort(dbTraceList);
-			ArrayList<TracePosition> tracePositionList = queryUliAddress(
-					dbTraceList, uliPipeline);
+			ArrayList<TracePosition> tracePositionList = queryUliAddress(dbTraceList/*
+																					 * ,
+																					 * uliPipeline
+																					 */);
 			personResult.setStatus(ret);
 			personResult.setTracelist(tracePositionList);
 
 			result.add(personResult);
 		}
-		List<Object> resp = uliPipeline.syncAndReturnAll();
-		HashMap<String, UliAddress> uliMap = getUliMap(resp);
-		fillUliAddress(result, uliMap);
-
-		RedisUtil.returnJedis(uliJedis, "uliRedis");
+		/*
+		 * List<Object> resp = uliPipeline.syncAndReturnAll(); HashMap<String,
+		 * UliAddress> uliMap = getUliMap(resp);
+		 * 
+		 * fillUliAddress(result, uliMap);
+		 * 
+		 * 
+		 * RedisUtil.returnJedis(uliJedis, "uliRedis");
+		 */
 		Gson gson = new Gson();
 
 		httpServletResponse.setContentType("text/json;charset=utf-8");
 		httpServletResponse.setStatus(HttpServletResponse.SC_OK);
-		baseRequest.setHandled(true);
 		httpServletResponse.getWriter().println(gson.toJson(result));
+		return NONE;
 	}
 
-	private QueryRequest parseRequest(Request baseRequest,
-			HttpServletRequest httpServletRequest) {
+	private QueryRequest parseRequest(HttpServletRequest httpServletRequest) {
 
 		QueryRequest request = new QueryRequest();
 		request.setUrl(new String(httpServletRequest.getRequestURL()));
@@ -107,7 +101,7 @@ public class DataTraceQueryHandler extends AbstractHandler {
 		request.setIndex(httpServletRequest.getParameter("index"));
 		request.setStartTime(httpServletRequest.getParameter("starttime"));
 		request.setEndTime(httpServletRequest.getParameter("endtime"));
-		request.setRemoteHost(baseRequest.getRemoteAddr());
+		request.setRemoteHost(httpServletRequest.getRemoteAddr());
 		request.generateIndexList();
 		LogUtil.info(request.toString());
 		return request;
@@ -161,7 +155,10 @@ public class DataTraceQueryHandler extends AbstractHandler {
 		ArrayList<TraceDBData> result = new ArrayList<TraceDBData>();
 		try {
 			try {
-				Class.forName("com.oscar.cluster.BulkDriver");
+				// Class.forName("com.oscar.cluster.BulkDriver");
+
+				// for ssh test
+				Class.forName("com.mysql.jdbc.Driver");
 			} catch (java.lang.ClassNotFoundException e) {
 				e.printStackTrace();
 			}
@@ -176,7 +173,10 @@ public class DataTraceQueryHandler extends AbstractHandler {
 	}
 
 	private ArrayList<TracePosition> queryUliAddress(
-			ArrayList<TraceDBData> dbTraceList, ShardedJedisPipeline uliPipeline) {
+			ArrayList<TraceDBData> dbTraceList/*
+											 * , ShardedJedisPipeline
+											 * uliPipeline
+											 */) {
 
 		ArrayList<TracePosition> tracePositionList = new ArrayList<TracePosition>();
 
@@ -193,7 +193,7 @@ public class DataTraceQueryHandler extends AbstractHandler {
 			tracePosition.setTime(timeStamp2Date(data.getC_timestamp()));
 			tracePositionList.add(tracePosition);
 
-			uliPipeline.get(data.getC_uli());
+			/* uliPipeline.get(data.getC_uli()); */
 		}
 
 		return tracePositionList;

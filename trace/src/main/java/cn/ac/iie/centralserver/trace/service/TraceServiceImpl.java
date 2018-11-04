@@ -1,19 +1,12 @@
-package cn.ac.iie.centralserver.trace.action;
+package cn.ac.iie.centralserver.trace.service;
 
-import java.io.IOException;
-import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.struts2.ServletActionContext;
 
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPipeline;
@@ -24,24 +17,12 @@ import cn.ac.iie.centralserver.trace.bean.TracePosition;
 import cn.ac.iie.centralserver.trace.bean.UliAddress;
 import cn.ac.iie.centralserver.trace.dao.TraceDaoImpl;
 import cn.ac.iie.centralserver.trace.db.RedisUtil;
-import cn.ac.iie.centralserver.trace.log.LogUtil;
 
-import com.google.gson.Gson;
-import com.opensymphony.xwork2.ActionSupport;
+public class TraceServiceImpl implements TraceService {
 
-public class TraceQueryAction extends ActionSupport {
-
-	private static final long serialVersionUID = 1L;
-
-	public String doTraceQuery() throws IOException {
-
-		HttpServletRequest httpServletRequest = ServletActionContext
-				.getRequest();
-		HttpServletResponse httpServletResponse = ServletActionContext
-				.getResponse();
-		QueryRequest request = parseRequest(httpServletRequest);
-		List<String> indexList = fetchIndexListByRequest(request);
-
+	@Override
+	public List<TracePersonResult> queryTrace(List<String> indexList,
+			QueryRequest request) {
 		/*
 		 * if (!checkToken(request, indexList)) { TracePersonResult personResult
 		 * = new TracePersonResult(); personResult.setStatus(5); Gson gson = new
@@ -57,24 +38,25 @@ public class TraceQueryAction extends ActionSupport {
 		 * ShardedJedisPipeline uliPipeline = uliJedis.pipelined();
 		 */
 
-		ArrayList<TracePersonResult> result = new ArrayList<TracePersonResult>();
+		List<TracePersonResult> result = new ArrayList<TracePersonResult>();
 		for (String aIndex : indexList) {
 			int ret = 0;
 
 			TracePersonResult personResult = new TracePersonResult();
-			ArrayList<TraceDBData> dbTraceList = queryTraceList(request, aIndex);
+			List<TraceDBData> dbTraceList = queryPersonTrace(request, aIndex);
 			if (dbTraceList == null || dbTraceList.size() == 0)
 				ret = 7;
 			Collections.sort(dbTraceList);
-			ArrayList<TracePosition> tracePositionList = queryUliAddress(dbTraceList/*
-																					 * ,
-																					 * uliPipeline
-																					 */);
+			List<TracePosition> tracePositionList = queryUliAddress(dbTraceList/*
+																				 * ,
+																				 * uliPipeline
+																				 */);
 			personResult.setStatus(ret);
 			personResult.setTracelist(tracePositionList);
 
 			result.add(personResult);
 		}
+
 		/*
 		 * List<Object> resp = uliPipeline.syncAndReturnAll(); HashMap<String,
 		 * UliAddress> uliMap = getUliMap(resp);
@@ -84,32 +66,7 @@ public class TraceQueryAction extends ActionSupport {
 		 * 
 		 * RedisUtil.returnJedis(uliJedis, "uliRedis");
 		 */
-		Gson gson = new Gson();
-
-		httpServletResponse.setContentType("text/json;charset=utf-8");
-		httpServletResponse.setStatus(HttpServletResponse.SC_OK);
-		httpServletResponse.getWriter().println(gson.toJson(result));
-		return NONE;
-	}
-
-	private QueryRequest parseRequest(HttpServletRequest httpServletRequest) {
-
-		QueryRequest request = new QueryRequest();
-		request.setUrl(new String(httpServletRequest.getRequestURL()));
-		request.setToken(httpServletRequest.getParameter("token"));
-		request.setQueryType(httpServletRequest.getParameter("querytype"));
-		request.setIndex(httpServletRequest.getParameter("index"));
-		request.setStartTime(httpServletRequest.getParameter("starttime"));
-		request.setEndTime(httpServletRequest.getParameter("endtime"));
-		request.setRemoteHost(httpServletRequest.getRemoteAddr());
-		request.generateIndexList();
-		LogUtil.info(request.toString());
-		return request;
-	}
-
-	private List<String> fetchIndexListByRequest(QueryRequest request) {
-
-		return Arrays.asList(request.getIndexList());
+		return result;
 	}
 
 	private boolean checkToken(QueryRequest request, List<String> indexList) {
@@ -150,35 +107,26 @@ public class TraceQueryAction extends ActionSupport {
 		return isTokenExist;
 	}
 
-	private ArrayList<TraceDBData> queryTraceList(QueryRequest request,
+	private List<TraceDBData> queryPersonTrace(QueryRequest request,
 			String index) {
-		ArrayList<TraceDBData> result = new ArrayList<TraceDBData>();
+		List<TraceDBData> result = null;
 		try {
-			try {
-				// Class.forName("com.oscar.cluster.BulkDriver");
+			result = new TraceDaoImpl().getDBData(request.getQueryType(),
+					index, request.getStartTime(), request.getEndTime());
 
-				// for ssh test
-				Class.forName("com.mysql.jdbc.Driver");
-			} catch (java.lang.ClassNotFoundException e) {
-				e.printStackTrace();
-			}
-			result = new TraceDaoImpl().getTraceData(
-					request.getQueryType(), index, request.getStartTime(),
-					request.getEndTime());
-			;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return result;
 	}
 
-	private ArrayList<TracePosition> queryUliAddress(
-			ArrayList<TraceDBData> dbTraceList/*
-											 * , ShardedJedisPipeline
-											 * uliPipeline
-											 */) {
+	private List<TracePosition> queryUliAddress(List<TraceDBData> dbTraceList/*
+																			 * ,
+																			 * ShardedJedisPipeline
+																			 * uliPipeline
+																			 */) {
 
-		ArrayList<TracePosition> tracePositionList = new ArrayList<TracePosition>();
+		List<TracePosition> tracePositionList = new ArrayList<TracePosition>();
 
 		if (dbTraceList == null || dbTraceList.size() == 0)
 			return tracePositionList;

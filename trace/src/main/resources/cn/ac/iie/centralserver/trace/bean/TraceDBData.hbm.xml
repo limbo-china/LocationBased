@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping package="cn.ac.iie.centralserver.trace.bean" >
+
+	<class name="TraceDBData" table="LBS" lazy="true">
+		<composite-id>
+            <key-property name="c_imsi" column="c_imsi"></key-property>
+            <key-property name="c_imei" column="c_imei" > </key-property>
+            <key-property name="c_msisdn" column="c_msisdn" ></key-property>
+            <key-property name="c_uli" column="c_uli" ></key-property>
+            <key-property name="c_areacode" column="c_areacode" ></key-property>
+            <key-property name="c_timestamp" column="c_timestamp" ></key-property>
+        </composite-id>
+	</class>
+	
+</hibernate-mapping>

@@ -12,7 +12,7 @@ import org.apache.struts2.ServletActionContext;
 import cn.ac.iie.centralserver.trace.bean.QueryRequest;
 import cn.ac.iie.centralserver.trace.bean.TracePersonResult;
 import cn.ac.iie.centralserver.trace.log.LogUtil;
-import cn.ac.iie.centralserver.trace.service.TraceServiceImpl;
+import cn.ac.iie.centralserver.trace.service.TraceService;
 
 import com.google.gson.Gson;
 import com.opensymphony.xwork2.ActionSupport;
@@ -20,6 +20,8 @@ import com.opensymphony.xwork2.ActionSupport;
 public class TraceQueryAction extends ActionSupport {
 
 	private static final long serialVersionUID = 1L;
+
+	private TraceService traceService;
 
 	public String doTraceQuery() throws IOException {
 
@@ -30,8 +32,8 @@ public class TraceQueryAction extends ActionSupport {
 		QueryRequest request = parseRequest(httpServletRequest);
 		List<String> indexList = fetchIndexListByRequest(request);
 
-		List<TracePersonResult> result = new TraceServiceImpl().queryTrace(
-				indexList, request);
+		List<TracePersonResult> result = traceService.queryTrace(indexList,
+				request);
 
 		Gson gson = new Gson();
 
@@ -60,6 +62,14 @@ public class TraceQueryAction extends ActionSupport {
 	private List<String> fetchIndexListByRequest(QueryRequest request) {
 
 		return Arrays.asList(request.getIndexList());
+	}
+
+	public TraceService getTraceService() {
+		return traceService;
+	}
+
+	public void setTraceService(TraceService traceService) {
+		this.traceService = traceService;
 	}
 
 }

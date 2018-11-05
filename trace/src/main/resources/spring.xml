@@ -1,9 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.springframework.org/schema/beans" 
-xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd ">
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xmlns="http://www.springframework.org/schema/beans" 
+xmlns:context="http://www.springframework.org/schema/context" 
+xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.2.xsd ">
 
-	<bean name="traceQueryAction" class="cn.ac.iie.centralserver.trace.action.TraceQueryAction" scope="prototype">		
+	<!--  <context:component-scan base-package="cn.ac.iie.centralserver.trace"></context:component-scan> -->
+
+	<bean name="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" >
+		<property name="jdbcUrl" value="jdbc:mysql://127.0.0.1:3306/sys?useSSL=false" ></property>
+		<property name="driverClass" value="com.mysql.jdbc.Driver" ></property>
+		<property name="user" value="root" ></property>
+		<property name="password" value="wbshl" ></property>
 	</bean>
 
+	<bean name="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean" >
+		<property name="dataSource" ref="dataSource" ></property>
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect" >org.hibernate.dialect.MySQLDialect</prop>
+				
+				<prop key="hibernate.show_sql" >true</prop>
+				<prop key="hibernate.format_sql" >true</prop>
+				<prop key="hibernate.hbm2ddl.auto" >update</prop>
+			</props>
+		</property>
 
+		<property name="mappingDirectoryLocations"> 
+			<list> 
+				<value>classpath:cn/ac/iie/centralserver/trace/bean</value> 
+			</list> 
+		</property>
+	</bean>
+	
+	<bean name="traceDao" class="cn.ac.iie.centralserver.trace.dao.TraceDaoImpl">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+	
+	<bean name="traceService" class="cn.ac.iie.centralserver.trace.service.TraceServiceImpl">
+		<property name="traceDao" ref="traceDao"></property>
+	</bean>
+	
+	<bean name="traceQueryAction" class="cn.ac.iie.centralserver.trace.action.TraceQueryAction" scope="prototype">		
+		<property name="traceService" ref="traceService"></property>
+	</bean>
 </beans>

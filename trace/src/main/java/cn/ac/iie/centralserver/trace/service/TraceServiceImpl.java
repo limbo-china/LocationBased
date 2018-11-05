@@ -15,10 +15,12 @@ import cn.ac.iie.centralserver.trace.bean.TraceDBData;
 import cn.ac.iie.centralserver.trace.bean.TracePersonResult;
 import cn.ac.iie.centralserver.trace.bean.TracePosition;
 import cn.ac.iie.centralserver.trace.bean.UliAddress;
-import cn.ac.iie.centralserver.trace.dao.TraceDaoImpl;
+import cn.ac.iie.centralserver.trace.dao.TraceDao;
 import cn.ac.iie.centralserver.trace.db.RedisUtil;
 
 public class TraceServiceImpl implements TraceService {
+
+	private TraceDao traceDao;
 
 	@Override
 	public List<TracePersonResult> queryTrace(List<String> indexList,
@@ -111,8 +113,8 @@ public class TraceServiceImpl implements TraceService {
 			String index) {
 		List<TraceDBData> result = null;
 		try {
-			result = new TraceDaoImpl().getDBData(request.getQueryType(),
-					index, request.getStartTime(), request.getEndTime());
+			result = traceDao.getDBData(request.getQueryType(), index,
+					request.getStartTime(), request.getEndTime());
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -203,6 +205,14 @@ public class TraceServiceImpl implements TraceService {
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 		return sdf.format(new Date(stamp * 1000));
+	}
+
+	public TraceDao getTraceDao() {
+		return traceDao;
+	}
+
+	public void setTraceDao(TraceDao traceDao) {
+		this.traceDao = traceDao;
 	}
 
 }
